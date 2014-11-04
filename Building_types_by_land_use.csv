@@ -1,0 +1,79 @@
+L4_USE,L5_USE,W1,W2,W3,N,CHB,URA,URM,RM1,RM2,MWS,CWS,C1,C2,C4,PC1,PC2,S1,S2,S3,S4
+Formal Settlements,Residential,4000,,,1200,5900,6490,6490,,,5200,7800,12200,16000,18000,,20000,30000,35000,15000,32000
+Formal Settlements,Mixed Residential and Small Commercial,5600,5600,2000,1200,6500,7150,7150,8000,8000,6000,9000,13200,18000,20000,20000,20000,30000,35000,15000,32000
+Formal Settlements,Small Commercial,5600,,,1200,7400,8140,8140,,,6600,9900,11000,20000,22000,,,30000,37000,15000,32000
+Informal Settlements,Mixed Informal Settlements,4000,,,1200,3000,3000,3000,,,5200,7800,12200,16000,18000,,,30000,35000,15000,32000
+Education,Schools,4300,4300,,,,,,,,,13200,22000,25000,27000,,,,27000,,32000
+Education,Universities,,,,,,,6490,,7788,,,23000,,27000,,,27000,,,
+Education,Vocational Colleges,,,,,,,6490,,,,,22000,,27000,,,,,,
+Education,Day Care Centers,,,,,,,,,,,13200,22000,,,,,,,,
+Health and Welfare,Hospitals,7500,,,,,,,,,,25000,36000,,38000,,,,,,
+Health and Welfare,Health Centers,,,,,,,,,,,,30000,,,,,,,,
+Health and Welfare,Aged Care Centers,4300,,,,,,,,,,,20000,,,,,,,,
+Health and Welfare,Rehabilitation Centers,,4300,,,,,,,,,,20000,,,,,,,,
+Health and Welfare,Orphanages,4300,,,,,,,,,,7320,12200,18000,20000,,,35000,35000,,35000
+Government,Administration,,,,,,,,,,,15000,25000,30000,30000,,30000,35000,,,
+Government,Services,6500,,,1200,7000,7000,7000,,,7000,10000,25000,30000,30000,,,35000,35000,15000,35000
+Government,Accommodation,,,,,7000,,,,,,,25000,,,,,,,,
+Government,Operations,,,,,,,,,,,,25000,30000,30000,,,35000,35000,,35000
+Emergency and Defense,Police,,,,,,,,,,,,25000,30000,,,,35000,,,
+Emergency and Defense,Fire and Rescue,,,,,,,,,,,,25000,,,,30000,,,,
+Emergency and Defense,Ambulance,,,,,,,,,,,,25000,,,,,,,,
+Emergency and Defense,Armed Forces,,,,,,,,,,,15000,25000,30000,30000,,,35000,35000,,35000
+Cultural,Places of Worship,6300,,,,,,,,,,12000,15000,,,,,,,,
+Cultural,Places of Assembly,,,,,,,,,,,12000,15000,,,,,35000,,,
+Cultural,Cemeteries,4300,,,,,,,,,,12000,15000,30000,30000,,,,35000,,35000
+Leisure,Exhibitions,,,,,,,,,,,,40000,40000,40000,,,50000,50000,,50000
+Leisure,Indoor Sports,,,,,,,,,,,25000,42000,,,,,45000,,,
+Leisure,Outdoor Sports and Playgrounds,,,,,,,,,,,25000,42000,,,,,45000,45000,15000,
+Energy Production,Electricity,,,,,,,,,,,,15000,,,,,,20000,15000,
+Energy Production,Gas,4300,,,,,,,,,,10000,15000,,,,,20000,,,
+Energy Production,Liquid Fuels,4300,,,,,,,,,,10000,15000,18000,20000,,,20000,22000,,32000
+Water Supply,Potable Water Storage,,,,,,,,,,,,15000,18000,,,,,20000,,
+Water Supply,Treatment,,,,,,,,,,,,15000,,,,,,,,
+Water Supply,Transmission,,,,,,,,,,,,15000,18000,,,,,20000,,
+Water Supply,Urban Supply,,,,,,,,,,,,,,,,,,20000,,25000
+Communications,Telecommunications,,,,,,,,,,,,,,,,,,20000,,
+Communications,Broadcasting,,,,,,,,,,,,20000,,23000,,,,,,
+Communications,Postal Services,,,,,,,,,,,,20000,,23000,,,,,,
+Waste Management,Solid Waste,,,,,,,,,,,12000,15000,,,,,20000,,,
+Waste Management,Liquid Waste,,,,,,,,,,,12000,15000,,,,,20000,,,
+Waste Management,Hazardous Waste,,,,,,,,,,,12000,,,,,,,20000,,
+Transportation,Road Transport,4300,,,1200,,,,,,,,15000,,,,,20000,20000,,
+Transportation,Rail Transport,,,,,,,,,,,,15000,,,,,20000,,,
+Transportation,Air Transport,4300,4300,,,,,,,,,25000,35000,,,,,20000,,,
+Transportation,Marine Transport,,,,,5900,6490,,,,,,25000,,,,30000,,,,
+Transportation,Cargo and Storage,4300,4300,,,,,,,,,12000,15000,,,,,20000,,,
+Heavy Industry,Manufacturing,4300,4300,,,,,,,,,13000,17000,18000,20000,,,20000,22000,,25000
+Heavy Industry,Processing,4300,4300,,,,,,,,,13000,17000,18000,20000,,,20000,22000,,25000
+Heavy Industry,Mining,,,,,,,,,,,,17000,18000,20000,,,20000,22000,,25000
+Heavy Industry,Construction,,,,,,,,,,,,17000,,,,,20000,,,
+Major Commercial,Retail,5400,,,,,,,,,,20000,30000,,35000,,,,30000,,
+Major Commercial,Wholesale,5400,,,,,,,,,,17000,25000,,,,,,30000,15000,
+Major Commercial,Office,5400,5400,,,,,,,,,18000,28000,,32000,,,,,,
+Major Commercial,Accommodation,,,,,,,,,,,18000,28000,,32000,,,,,,
+Major Commercial,Mixed Major Commercial,5400,5400,,,,,,,,,18000,28000,,32000,,,,,,
+Major Commercial,Markets,5400,5400,,,,,,,,,18000,28000,,,,,30000,,,
+Major Commercial,Tourism Facilities,5400,,3900,,5900,,,7000,,,,28000,,,,,30000,30000,,
+Food Security,Government Grain Storage,,,,,,,,,,,,,,,,,20000,,,
+Food Security,Private Storage,,,,,,,,,,,10000,14000,,,,,,,,
+Flood Control,Flood Gates,,,,,,,,,,,10000,14000,,,,,,,,
+Flood Control,Flood Monitoring Stations,,,,,,,,,,,10000,15000,,,,,,,,
+Flood Control,Flood Pumping Stations,,,,,,,,,,,,15000,,,,,,,,
+Rural Residential,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,18000,18000,,,20000,22000,15000,25000
+Agriculture,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,18000,18000,,,20000,22000,15000,25000
+Aquaculture,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,18000,18000,,,20000,22000,15000,25000
+Horticulture,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,,,,,20000,,15000,
+Forestry,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,,,,,20000,,15000,
+Livestock,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,,,,,20000,,15000,
+Livestock,Feedlots,4300,,,1200,5900,6490,6490,,,5200,10000,15000,,,,,20000,,15000,
+Market Gardening,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,,,,,20000,22000,15000,
+Mixed Farming,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,18000,18000,,,20000,22000,15000,25000
+Poultry,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,,,,,20000,,15000,
+Vacant Areas,Yet to be defined,4300,,,,,,6490,,,,10000,15000,,,,,20000,,,
+Natural Areas,National Parks,4300,4300,,,,,6490,,,,10000,15000,18000,18000,,25000,20000,,,
+Reserved Areas,Yet to be defined,4300,,,1200,5900,6490,6490,,,5200,10000,15000,,,,,20000,,15000,25000
+Reserved Areas,Urban Parks,4300,,,,,,6490,,,,10000,15000,18000,18000,,,20000,22000,,25000
+Reserved Areas,Greenbelts,4300,,,,,,6490,,,,10000,15000,,,,,20000,,,
+Reserved Areas,Buffer Zones,4300,,,,,,6490,,,,10000,15000,,,,,20000,,,
+Reclamations,Yet to be defined,,,,,,,,,,,,,,,,,,,,
