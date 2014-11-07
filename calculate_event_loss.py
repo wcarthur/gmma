@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
- Title: parse_gmma_exposure_shpfile.py - parse exposure shape file for GMMA
+ Title: calculate_event_loss.py - parse exposure shape file for GMMA
         project
  Author: Craig Arthur, craig.arthur@ga.gov.au
  CreationDate: 2012-11-02
@@ -403,28 +403,31 @@ def plotResults(avg_loss, tot_cost, return_periods, output_folder):
 
     return
 
-@timer
+#@timer
 def main():
     """
     Main section of the script - process command line arguments and call
     other functions to process the data
     """
 
-    parser = argparse.ArgumentParser(usage=showSyntax())
-    parser.add_argument('-c', '--costs', ('csv format file containing '
-                                          'the cost data for building '
-                                          'types and land-use groupings'))
-    parser.add_argument('-o', '--outputpath', ('Path to folder for '
-                                               'storing the output' ))
-    parser.add_argument('-s', '--shapefile', ('Path (including extension) '
-                                              'of the shape file holding '
-                                              'the zone features to process '
-                                              '(e.g. land-use parcels, '
-                                              'meshblocks, etc.)'))
-    parser.add_argument('-v', '--vulnerability', ('csv format file containing '
-                                                  'the mean, sigma and scale '
-                                                  'values for building '
-                                                  'vulnerability curves'))
+    flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
+               verbose=True, datestamp=True)
+    LOG.info("Parsing command line arguments")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--costs',
+                        help=('csv format file containing the cost data '
+                              'for building types and land-use groupings'))
+    parser.add_argument('-o', '--outputpath',
+                        help=('Path to folder for storing the output' ))
+    parser.add_argument('-s', '--shapefile',
+                        help=('Path (including extension) of the shape '
+                              'file holding the zone features to process '
+                              '(e.g. land-use parcels, meshblocks, etc.)'))
+    parser.add_argument('-v', '--vulnerability',
+                        help=('csv format file containing the mean, sigma '
+                              'and scale values for building '
+                              'vulnerability curves'))
+    
     args = parser.parse_args()
     cost_file = args.costs
     output_path = args.outputpath
@@ -473,11 +476,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) == 1:
         showSyntax()
-
-    flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
-               verbose=True, datestamp=True)
-
-    
+            
     try:
         main()
     except Exception: #pylint: disable-msg=W0703
