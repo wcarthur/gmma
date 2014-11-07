@@ -14,10 +14,10 @@
 import logging
 import numpy
 
-logger = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 def probability(return_period):
     """Return an annual probability given a return period"""
-    logger.debug("Calculating annual probability from return periods")
+    LOG.debug("Calculating annual probability from return periods")
     prob = 1.0 - numpy.exp(-1.0/return_period)
     return prob

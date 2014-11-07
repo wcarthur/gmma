@@ -10,39 +10,35 @@ import os
 import shapefile
 import logging
 from files import flModDate
-import pdb
 
+LOG = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
-def parse_shapefile(shape_file):
+def parseShapefile(shape_file):
     """
     Read shapes and records from a shape file and return them
     
     """
-    logger.info('Parsing shapefile {0}'.format(os.path.abspath(shape_file)))
+    LOG.info('Parsing shapefile {0}'.format(os.path.abspath(shape_file)))
 
     moddate = flModDate(shape_file)
-    logger.info( 'Last modified: {0}'.format(moddate) )
+    LOG.info('Last modified: {0}'.format(moddate))
 
     # read shapefile
-    shp_reader = shapefile.Reader(shape_file)
-    shapes = shp_reader.shapes()
-    records = shp_reader.records()
-    fields = shp_reader.fields
+    sf = shapefile.Reader(shape_file)
+    shapes = sf.shapes()
+    records = sf.records()
+    fields = sf.fields
 
     # remove first header field - no corresponding value in "records"
-    #fields_append = fields # keep this for writing new shp
     fields = fields[1:]
-    #fieldnames = [fields[i][0] for i in range(len(fields))]
     
     return shapes, fields, records
     
-def write_shapefile(output_file, fields, shapes, records):
+def writeShapefile(output_file, fields, shapes, records):
     """
     Write the records and shapes to an output shape file
     """
-    logger.info("Writing data to {0}.shp".format(os.path.abspath(output_file)))
+    LOG.info("Writing data to {0}.shp".format(os.path.abspath(output_file)))
     shp_writer = shapefile.Writer(shapefile.POLYGON)
 
     # Set the fields:
@@ -66,11 +62,11 @@ def write_shapefile(output_file, fields, shapes, records):
     try:
         shp_writer.save(output_file)
     except shapefile.ShapefileException:
-        logger.exception("Failed to write to {0}".
+        LOG.exception("Failed to write to {0}".
                          format(os.path.abspath(output_file)))
         raise
     except AssertionError:
-        logger.exception("Problem in length and precision of fields")
+        LOG.exception("Problem in length and precision of fields")
         raise
 
     return

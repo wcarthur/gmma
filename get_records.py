@@ -17,23 +17,23 @@
 import numpy
 import logging
 
-__logger__ = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
-def get_field(fieldname, fields, records, dtype=float):
+def getField(fieldname, fields, records, dtype=float):
     """
     Extract from the records the value of the field corresponding
     to fieldname.
     """
-    __logger__.debug("Extracting {0} from records".format(fieldname))
+    LOG.debug("Extracting {0} from records".format(fieldname))
     nrecords = len(records)
     fieldnames = [fields[i][0] for i in range(len(fields))]
 
     # Check the field is in the records:
     if fieldname not in fieldnames:
-        __logger__.warn("No field '{0}' in the list of fieldnames" .
+        LOG.warn("No field '{0}' in the list of fieldnames" .
                     format(fieldname))
 
-        __logger__.warn("Unable to proceed with processing")
+        LOG.warn("Unable to proceed with processing")
         raise ValueError
 
     # Get the index of the required field name:
@@ -50,20 +50,20 @@ def get_field(fieldname, fields, records, dtype=float):
 
     return output
 
-def remove_field(fieldname, fields, records):
+def removeField(fieldname, fields, records):
     """
     Remove from the records the given field
     """
-    __logger__.debug("Extracting {0} from records".format(fieldname))
+    LOG.debug("Extracting {0} from records".format(fieldname))
     nrecords = len(records)
     fieldnames = [fields[i][0] for i in range(len(fields))]
 
     # Check the field is in the records:
     if fieldname not in fieldnames:
-        __logger__.warn("No field '{0}' in the list of fieldnames" .
+        LOG.warn("No field '{0}' in the list of fieldnames" .
                     format(fieldname))
 
-        __logger__.warn("Unable to proceed with processing")
+        LOG.warn("Unable to proceed with processing")
         raise ValueError
 
     # Get the index of the required field name:

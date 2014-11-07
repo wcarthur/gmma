@@ -23,24 +23,24 @@ from time import ctime
 import numpy
 import logging
 
-LOGGER = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
-def parse_cost_file(cost_file):
+def parseCostFile(cost_file):
     """
     Read in building construction cost data from csv file and produce
     a lookup table (dict of dicts) that holds the information for
     future processing.
     """
-    LOGGER.info('Reading cost data from %s' % os.path.abspath(cost_file))
+    LOG.info('Reading cost data from %s' % os.path.abspath(cost_file))
     sinfo = os.stat(cost_file)
     moddate = ctime(sinfo.st_mtime)
-    LOGGER.info('Last modified %s' % moddate)
+    LOG.info('Last modified %s' % moddate)
 
     building_cost_data = dict()
     try:
         cost_file_handle = open(cost_file, 'rb')
     except IOError:
-        LOGGER.exception( "Failed to open cost file: %s" % cost_file)
+        LOG.exception( "Failed to open cost file: %s" % cost_file)
         raise IOError("Failed to open cost file: %s" % cost_file)
     else:
         cost_file_handle.close()
@@ -71,7 +71,7 @@ def parse_cost_file(cost_file):
 
     return building_cost_data
 
-def calculate_value(floor_area, landuse4, landuse5, building_type,
+def calculateValue(floor_area, landuse4, landuse5, building_type,
                     building_costs):
     """
     Calculate the value of a building type, based on it's floor area,
@@ -94,7 +94,7 @@ def calculate_value(floor_area, landuse4, landuse5, building_type,
     building type is set to zero.
     """
 
-    LOGGER.debug("Calculating value of building type {0}".format(building_type))
+    LOG.debug("Calculating value of building type {0}".format(building_type))
     # Key part of the building type is the construction method and
     # building height:
     bldg_type = building_type.split('_', 1)[0]
@@ -128,7 +128,7 @@ def calculate_value(floor_area, landuse4, landuse5, building_type,
             else:
                 value[i] = 0.0
         except KeyError:
-            LOGGER.warn(("No building cost information for {0} buildings "
+            LOG.warn(("No building cost information for {0} buildings "
                             "in {1}-{2} class land parcels"
                             "(parcel ID# {3})").format(bldg_type,
                             lu4, lu5, i) )

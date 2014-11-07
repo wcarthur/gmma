@@ -67,7 +67,7 @@ try:
     import numpy as np
     from files import flConfigFile, flStartLog
     from datetime import datetime
-    from parse_shapefile import parse_shapefile
+    from parse_shapefile import parseShapefile
     import AggUtils
 
 except ImportError as error:
@@ -79,12 +79,12 @@ except ImportError as error:
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-logger = logging.getLogger()
+LOG = logging.getLogger()
 
-__eps__ = 1.0e-6
+EPSILON = 1.0e-6
 __version__ = "0.1"
 
-def ShowSyntax(exit_code=0):
+def showSyntax(exit_code=0):
     """Display how to use this script and exit with the given exit
     code"""
     if sys.stdout.isatty():
@@ -93,7 +93,7 @@ def ShowSyntax(exit_code=0):
 
     sys.exit(exit_code)
 
-def parse_args(argv):
+def parseArgs(argv):
     """
     Parse the command line arguments
     """
@@ -108,11 +108,11 @@ def parse_args(argv):
                                    ['help', 'featureid=', 'outputpath=',
                                     'shapefile=', 'zonefield='])
     except getopt.GetoptError:
-        ShowSyntax(-1)
+        showSyntax(-1)
     else:
         for opt, arg in opts:
             if opt in ( "-h", "--help" ):
-                ShowSyntax(0)
+                showSyntax(0)
             elif opt in ( "-f", "--featureid"):
                 featureid = arg
             elif opt in ( "-o", "--outputpath" ):
@@ -124,8 +124,8 @@ def parse_args(argv):
 
         return shape_file, output_path, featureid, zonefield
 
-def aggregate_loss(records, fields, features, return_periods, zoneid,
-                   output_path):
+def aggregateLoss(records, fields, features, return_periods, zoneid,
+                  output_path):
     """
     Aggregate loss for all return periods and annualised loss across
     some field (e.g. suburb boundaries)
@@ -143,14 +143,14 @@ def aggregate_loss(records, fields, features, return_periods, zoneid,
     bgy_dmg_file = pjoin(os.path.abspath(output_path), 'bgy_dmg.csv')
 
 
-    AggUtils.write_loss_output(lgu_loss_file, lguoutput, return_periods)
-    AggUtils.write_loss_output(bgy_loss_file, bgyoutput, return_periods, False)
+    AggUtils.writeLossOutput(lgu_loss_file, lguoutput, return_periods)
+    AggUtils.writeLossOutput(bgy_loss_file, bgyoutput, return_periods, False)
 
-    AggUtils.write_cost_output(lgu_cost_file, lguoutput, return_periods)
-    AggUtils.write_cost_output(bgy_cost_file, bgyoutput, return_periods, False)
+    AggUtils.writeCostOutput(lgu_cost_file, lguoutput, return_periods)
+    AggUtils.writeCostOutput(bgy_cost_file, bgyoutput, return_periods, False)
 
-    AggUtils.write_dmg_output(lgu_dmg_file, lguoutput, return_periods)
-    AggUtils.write_dmg_output(bgy_dmg_file, bgyoutput, return_periods, False)
+    AggUtils.writeDmgOutput(lgu_dmg_file, lguoutput, return_periods)
+    AggUtils.writeDmgOutput(bgy_dmg_file, bgyoutput, return_periods, False)
 
     return
 
@@ -160,7 +160,7 @@ def main(argv=None, return_periods=None):
     other functions to perform the aggregation
     """
 
-    shape_file, output_path, featureid, zonefield = parse_args(argv)
+    shape_file, output_path, featureid, zonefield = parseArgs(argv)
 
     # Name of the output shape file, with no extension:
     if not os.path.isdir(os.path.abspath(output_path)):
@@ -171,21 +171,21 @@ def main(argv=None, return_periods=None):
             raise
 
     # Load the exposure file:
-    shapes, fields, records = parse_shapefile(shape_file)
-    features = AggUtils.load_zones_from_records(records, fields, featureid,
-                                                zonefield)
+    shapes, fields, records = parseShapefile(shape_file)
+    features = AggUtils.loadZonesFromRecords(records, fields, featureid,
+                                             zonefield)
     #features = AggUtils.load_zones(zonefile)
-    aggregate_loss(records, fields, features, return_periods, featureid,
+    aggregateLoss(records, fields, features, return_periods, featureid,
                    output_path)
 
 if __name__ == '__main__':
 
     if len(sys.argv) == 1:
-        ShowSyntax()
+        showSyntax()
 
     __STARTTIME__ = datetime.now()
 
-    logger = flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
+    LOG = flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
                         verbose=True, datestamp=True)
 
     # Set the return periods here:

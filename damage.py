@@ -30,8 +30,8 @@ from scipy.stats import lognorm
 import numpy as np
 import logging
 
-__eps__ = 1.0e-6
-LOGGER = logging.getLogger(__name__)
+EPSILON = 1.0e-6
+LOG = logging.getLogger(__name__)
 
 def damage(wind_speed, mu, sigma, scale=1.0):
     """
@@ -55,12 +55,12 @@ def damage(wind_speed, mu, sigma, scale=1.0):
     dmg = np.zeros(len(wind_speed))
     dmg = scale*lognorm.cdf(wind_speed*3.6, sigma, scale=mu)
     # Mask 'small' damage values to be zero:
-    np.putmask(dmg, dmg < __eps__, 0.0)
+    np.putmask(dmg, dmg < EPSILON, 0.0)
     np.putmask(dmg, mu==0.0, 0.0)
 
     return dmg
 
-def adjust_curves(bld_type, vmask, mu, sigma, scale):
+def adjustCurves(bld_type, vmask, mu, sigma, scale):
     """
     Change the vulnerability curve for those building types
     where there are different materials used in different
@@ -69,7 +69,7 @@ def adjust_curves(bld_type, vmask, mu, sigma, scale):
     IN THIS SECTION
     """
 
-    LOGGER.debug( ("Adjusting curves for building types with"
+    LOG.debug( ("Adjusting curves for building types with"
                     "age-dependent vulnerability") )
     if bld_type.startswith('MWS'):
         np.putmask(mu, vmask, 398.)

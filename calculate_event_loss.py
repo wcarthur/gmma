@@ -83,8 +83,11 @@ __version__ = "0.7"
 import os
 import sys
 import csv
+import argparse
 import logging
+import time
 from datetime import datetime
+from functools import wraps
 import traceback
 from os.path import join as pjoin, isdir, abspath
 try:
@@ -95,10 +98,10 @@ try:
     matplotlib.use('Agg', warn=False)
 
     from matplotlib import pyplot
-    from get_records import get_field
-    from cost_data import parse_cost_file, calculate_value
-    from parse_shapefile import write_shapefile, parse_shapefile
-    from damage import damage, adjust_curves
+    from get_records import getField
+    from cost_data import parseCostFile, calculateValue
+    from parse_shapefile import writeShapefile, parseShapefile
+    from damage import damage, adjustCurves
     from probability import probability
 except ImportError as error:
     print "Cannot import all required modules"
@@ -110,12 +113,28 @@ import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-logger = logging.getLogger()
+LOG = logging.getLogger()
 
-__eps__ = 1.0e-5
+def timer(func):
+    """A simple timing decorator"""
+    
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        t1 = time.time()
+        res = func(*args, **kwargs)
+
+        tottime = time.time() - t1
+        msg = "%02d:%02d:%02d " % \
+          reduce(lambda ll, b : divmod(ll[0], b) + ll[1:],
+                        [(tottime,), 60, 60])
+
+        LOG.info("Time for {0}: {1}".format(func.func_name, msg) )
+        return res
+
+    return wrap
 
 
-def ShowSyntax(exit_code=0):
+def showSyntax(exit_code=0):
     """Display how to use this script and exit with the given exit
     code"""
     if sys.stdout.isatty():
@@ -124,25 +143,7 @@ def ShowSyntax(exit_code=0):
 
     sys.exit(exit_code)
 
-def integrate_loss(prob, dmg):
-    """Integrate the return period losses to evaluate annualised loss"""
-
-    # Make an assumption that we have zero loss for a 1-year event:
-    # This means we need to define the level of damage as zero, and
-    # the probability as that of a 1-year return period event.
-
-    logger.debug("Integrating losses to evaluate annualised loss")
-    if all(dmg < __eps__):
-        ann_loss = 0.0
-    else:
-        prob1yr = probability(1.0)
-        dmg = np.concatenate([[0.0], dmg])
-        prob = np.concatenate([[prob1yr], prob])
-        ann_loss = simps(prob, dmg)
-
-    return ann_loss
-
-def total_damage(building_types, fields, records, building_costs):
+def totalDamage(building_types, fields, records, building_costs):
     """
     Calculate the total damage for each feature, for each return
     period.  Total damage is the weighted sum of damage to each
@@ -150,22 +151,22 @@ def total_damage(building_types, fields, records, building_costs):
     building type.
     """
 
-    logger.info("Calculating total damage to building stock")
-    logger.debug("Calculating total value of building stock in each feature")
+    LOG.info("Calculating total damage to building stock")
+    LOG.debug("Calculating total value of building stock in each feature")
 
     nrecords = len(records)
     n_bldg_type = len(building_types.keys())
 
-    lu4 = get_field('L4_USE', fields, records, str)
-    lu5 = get_field('L5_USE', fields, records, str)
-    vintage = get_field('ERA_CONST', fields, records, str)
-    area_sqm = get_field('AREA_SQM', fields, records)
+    lu4 = getField('L4_USE', fields, records, str)
+    lu5 = getField('L5_USE', fields, records, str)
+    vintage = getField('ERA_CONST', fields, records, str)
+    area_sqm = getField('AREA_SQM', fields, records)
 
     values = np.empty((n_bldg_type, nrecords))
 
     for i, bld_type in enumerate(building_types.keys()):
-        flarea = get_field(bld_type, fields, records)
-        values[i, :] = calculate_value(flarea, lu4, lu5, bld_type,
+        flarea = getField(bld_type, fields, records)
+        values[i, :] = calculateValue(flarea, lu4, lu5, bld_type,
                                         building_costs)
 
     totvalue = np.sum(values, axis=0)
@@ -174,7 +175,7 @@ def total_damage(building_types, fields, records, building_costs):
     for i, record in enumerate(records):
         record.append(totvalue[i])
 
-    logger.debug("Appending required fields for loss metrics")
+    LOG.debug("Appending required fields for loss metrics")
     
     fields.append(['loss', "N", 9, 6])
     fields.append(['cost', "N", 10, 0])
@@ -191,23 +192,23 @@ def total_damage(building_types, fields, records, building_costs):
     #rp_dmgfl = np.empty((len(return_periods), nrecords))
 
     #for n, ret_per in enumerate(return_periods):
-    logger.info("Processing wind speed")
-    wind_speed = get_field('vmax', fields, records)
+    LOG.info("Processing wind speed")
+    wind_speed = getField('vmax', fields, records)
 
     costs = np.empty((len(building_types.keys()), nrecords))
     dmg_flarea = np.empty((len(building_types.keys()), nrecords))
 
     for i, bld_type in enumerate(building_types.keys()):
         # Calculate corresponding value of built assets:
-        flarea = get_field(bld_type, fields, records)
-        value = calculate_value(flarea, lu4, lu5, bld_type, building_costs)
+        flarea = getField(bld_type, fields, records)
+        value = calculateValue(flarea, lu4, lu5, bld_type, building_costs)
 
         # Calculate the damage (as a fraction of replacement cost):
         mu = building_types[bld_type]['mu']*np.ones(len(wind_speed))
         sigma = building_types[bld_type]['sigma']*np.ones(len(wind_speed))
         scale = building_types[bld_type]['scale']*np.ones(len(wind_speed))
 
-        mu, sigma, scale = adjust_curves(bld_type, vmask, mu, sigma, scale)
+        mu, sigma, scale = adjustCurves(bld_type, vmask, mu, sigma, scale)
 
         d = damage(wind_speed, mu, sigma, scale)
 
@@ -231,16 +232,16 @@ def total_damage(building_types, fields, records, building_costs):
         #rp_costs[n, :] = totcost
         #rp_dmgfl[n, :] = totdmgfl
 
-        #logger.info("Size of records = {0} MB".format(
+        #LOG.info("Size of records = {0} MB".format(
         #            total_size(records)/1024**2))
 
-    #logger.info("Calculating annualised losses")
+    #LOG.info("Calculating annualised losses")
     # Calculate annual probability:
     #annual_prob = probability(return_periods)
     #for i, record in enumerate(records):
-    #    annualised_loss = integrate_loss(annual_prob, rp_damage[:, i])
-    #    annualised_costs = integrate_loss(annual_prob, rp_costs[:, i])
-    #    annualised_dmgfl = integrate_loss(annual_prob, rp_dmgfl[:, i])
+    #    annualised_loss = integrateLoss(annual_prob, rp_damage[:, i])
+    #    annualised_costs = integrateLoss(annual_prob, rp_costs[:, i])
+    #    annualised_dmgfl = integrateLoss(annual_prob, rp_dmgfl[:, i])
     #    record.extend([annualised_loss, annualised_costs, annualised_dmgfl])
 
     return fields, records
@@ -266,26 +267,26 @@ def process(fields, records, vulnerability_file, cost_file):
         are calculated.
     """
 
-    building_types = parse_vulnerability(vulnerability_file)
-    building_costs = parse_cost_file(cost_file)
+    building_types = parseVulnerability(vulnerability_file)
+    building_costs = parseCostFile(cost_file)
 
     output_fields, \
-        output_records = total_damage(building_types, fields,
-                                      records, building_costs)
+        output_records = totalDamage(building_types, fields,
+                                     records, building_costs)
 
     return output_fields, output_records
 
-def parse_vulnerability(vuln_file):
+def parseVulnerability(vuln_file):
     """
     Return a dict of building classes, with each value another dict
     containing the alpha and beta values for the vulnerability model
     for that class of building.
     """
 
-    logger.info('Reading vulnerability parameters from {0}'.format(
+    LOG.info('Reading vulnerability parameters from {0}'.format(
                     abspath(vuln_file)))
     moddate = flModDate(vuln_file)
-    logger.info('Last modified: {0}'.format(moddate))
+    LOG.info('Last modified: {0}'.format(moddate))
 
     up_vuln_type = []
     mu = []
@@ -310,16 +311,16 @@ def parse_vulnerability(vuln_file):
                     scale.append(0.0)
 
     params = dict()
-    logger.debug("Class : mu : sigma")
+    LOG.debug("Class : mu : sigma")
     for i, k in enumerate(up_vuln_type):
         params[k] = {'mu':mu[i], 'sigma':sigma[i], 'scale':scale[i]}
-        logger.debug( ("{0:<6}: \
+        LOG.debug( ("{0:<6}: \
                        {1:<5.3f} : \
                        {2:<5.2f} : \
                        {3:<5.2f}").format(k, mu[i], sigma[i], scale[i]))
     return params
 
-def calculate_average_loss(records, fields, output_folder):
+def calculateAverageLoss(records, fields, output_folder):
     """
     Calculate average loss (for return periods and annualised loss)
     for the region.
@@ -335,16 +336,16 @@ def calculate_average_loss(records, fields, output_folder):
     #    dmg_key = 'dmg' + str(int(ret_per))
     #    cost_key = 'cost' + str(int(ret_per))
 
-    #    dmg = get_field(dmg_key, fields, records)
-    #    cost = get_field(cost_key, fields, records)
+    #    dmg = getField(dmg_key, fields, records)
+    #    cost = getField(cost_key, fields, records)
     #    avg_loss[i] = np.sum(dmg*cost)/np.sum(cost)
     #    tot_cost[i] = np.sum(cost)
     #    fh.write("{0:d}, {1:f}, P{2:,d}\n".format(
     #            int(ret_per), avg_loss[i], int(tot_cost[i])))
 
-    loss = get_field('loss', fields, records)
-    cost = get_field('cost', fields, records)
-    values = get_field('bldg_value', fields, records)
+    loss = getField('loss', fields, records)
+    cost = getField('cost', fields, records)
+    values = getField('bldg_value', fields, records)
     avg_loss = np.sum(loss*cost)/np.sum(cost)
 
     fh.write("Average loss: {0:f}\n".format(avg_loss))
@@ -356,7 +357,7 @@ def calculate_average_loss(records, fields, output_folder):
 
     return
 
-def plot_results(avg_loss, tot_cost, return_periods, output_folder):
+def plotResults(avg_loss, tot_cost, return_periods, output_folder):
     """
     Plot the results as PML curves or similar
     """
@@ -369,7 +370,7 @@ def plot_results(avg_loss, tot_cost, return_periods, output_folder):
     avg_loss = np.concatenate([[0], avg_loss])
     tot_cost = np.concatenate([[0], tot_cost])
 
-    logger.info("Plotting probability-loss curve")
+    LOG.info("Plotting probability-loss curve")
     fig1 = pyplot.figure()
     ax1 = fig1.add_subplot(111)
     ax1.fill_between(avg_loss*100., probs, 0.0, lw=2, alpha=0.5)
@@ -380,7 +381,7 @@ def plot_results(avg_loss, tot_cost, return_periods, output_folder):
     pyplot.ylabel("Annual probability")
     pyplot.title("Probability-loss curve")
     pyplot.savefig(pjoin(output_path, "probability-loss.png"))
-    logger.info("Plotting return period-loss curve")
+    LOG.info("Plotting return period-loss curve")
     pyplot.figure(2)
     pyplot.semilogx(return_periods, avg_loss*100., lw=2, marker='+', ms=10)
     pyplot.xlabel("Return period (years)")
@@ -388,7 +389,7 @@ def plot_results(avg_loss, tot_cost, return_periods, output_folder):
     pyplot.grid(True, which='both', linestyle=':', color='k')
     pyplot.title("Return period loss curve")
     pyplot.savefig(pjoin(output_path, "rp-loss-curve.png"))
-    logger.info("Plotting probability-cost curve")
+    LOG.info("Plotting probability-cost curve")
     fig3 = pyplot.figure(3)
     ax3 = fig3.add_subplot(111)
     ax3.fill_between(tot_cost/np.power(10., 9), probs, 0.0, lw=2, alpha=0.5)
@@ -402,13 +403,14 @@ def plot_results(avg_loss, tot_cost, return_periods, output_folder):
 
     return
 
+@timer
+def main():
+    """
+    Main section of the script - process command line arguments and call
+    other functions to process the data
+    """
 
-def parse_args(argv):
-    """
-    Parse the command line arguments
-    """
-    import argparse
-    parser = argparse.ArgumentParser(usage=ShowSyntax())
+    parser = argparse.ArgumentParser(usage=showSyntax())
     parser.add_argument('-c', '--costs', ('csv format file containing '
                                           'the cost data for building '
                                           'types and land-use groupings'))
@@ -423,28 +425,11 @@ def parse_args(argv):
                                                   'the mean, sigma and scale '
                                                   'values for building '
                                                   'vulnerability curves'))
-
-    # Default values:
-    shape_file = None
-    output_path = os.getcwd()
-    vulnerability_file = None
-    cost_file = None
-
     args = parser.parse_args()
     cost_file = args.costs
     output_path = args.outputpath
     shape_file = args.shapefile
     vulnerability_file = args.vulnerability
-
-    return shape_file, output_path, cost_file, vulnerability_file
-        
-def main(argv=None):
-    """
-    Main section of the script - process command line arguments and call
-    other functions to process the data
-    """
-
-    shape_file, output_path, cost_file, vulnerability_file = parse_args(argv)
 
     # Name of the output shape file, with no extension:
     if not isdir(abspath(output_path)):
@@ -470,43 +455,38 @@ def main(argv=None):
                         "event_loss_{0}".format(curdatestr))
 
     # Load the exposure file
-    shapes, fields, records = parse_shapefile(shape_file)
-    #logger.info("Initial size of records = {0} MB".format(
-    #            total_size(records)/1024**2))
+    shapes, fields, records = parseShapefile(shape_file)
+
     output_fields, output_records = process(fields, records, vulnerability_file,
                                             cost_file)
 
     # Write out the data to another shapefile
-    write_shapefile(output_file, output_fields, shapes, output_records)
+    writeShapefile(output_file, output_fields, shapes, output_records)
 
     # Calculate average loss across the entire region contained in the
     # input shapefile:
-    calculate_average_loss(output_records, output_fields, output_path)
+    calculateAverageLoss(output_records, output_fields, output_path)
 
 #*******************************************************************************
 # NOW START MAIN CODE
 if __name__ == "__main__":
 
     if len(sys.argv) == 1:
-        ShowSyntax()
+        showSyntax()
 
-    __STARTTIME__ = datetime.now()
-
-    logger = flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
-                        verbose=True, datestamp=True)
+    flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
+               verbose=True, datestamp=True)
 
     
     try:
-        main(sys.argv[1:])
-    except Exception:
+        main()
+    except Exception: #pylint: disable-msg=W0703
         tblines = traceback.format_exc().splitlines()
         for line in tblines:
-            logger.critical(line.lstrip())
+            LOG.critical(line.lstrip())
         sys.exit(-1)
 
-    __TOTALTIME__ = datetime.now() - __STARTTIME__
-    logger.info("Time to process: {0}".format(__TOTALTIME__))
-    logger.info("Completed {0}".format(sys.argv[0]))
+    LOG.info("Completed {0}".format(sys.argv[0]))
 
 
 

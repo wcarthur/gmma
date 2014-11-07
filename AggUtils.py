@@ -27,9 +27,9 @@ from AvDict import AvDict
 
 
 
-__logger__ = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
-def extract_zone_values(featureid, features, records):
+def extractZoneValues(featureid, features, records):
     """
     Extract values from a set of records based on a matched feature id field.
     The 'featureid' variable contains the unique identifier for each feature in
@@ -60,12 +60,12 @@ def extract_zone_values(featureid, features, records):
 
     return regions, subregions
 
-def get_regions(zonefile):
+def getRegions(zonefile):
     """
     Obtain a list of all unique regions and sub regions contained in the input
     zonefile
     """
-    __logger__.debug("Extracting list of unique regions from {0}".format(
+    LOG.debug("Extracting list of unique regions from {0}".format(
                         os.path.abspath(zonefile)) )
 
     regions = ['UNDEFINED']
@@ -89,17 +89,17 @@ def get_regions(zonefile):
                 if zone not in subregions:
                     subregions.append(zone)
 
-    __logger__.debug("Found {0:d} unique regions".format(len(regions)))
-    __logger__.debug("Found {0:d} unique subregions".format(len(subregions)))
+    LOG.debug("Found {0:d} unique regions".format(len(regions)))
+    LOG.debug("Found {0:d} unique subregions".format(len(subregions)))
 
     return regions, subregions
 
-def load_zones_from_records(records, fields, featureid, zoneid):
+def loadZonesFromRecords(records, fields, featureid, zoneid):
     """
     Obtain a list of all unique regions and sub regions contained in the input
     shapefile
     """
-    __logger__.debug("Extracting list of unique regions from records")
+    LOG.debug("Extracting list of unique regions from records")
 
     output = dict()
 
@@ -129,7 +129,7 @@ def aggregate(records, fields, featureid, features, return_periods):
     'return_periods' - array of return period values for which to calculate
         aggregated losses.
     """
-    __logger__.info("Calculating aggregated losses")
+    LOG.info("Calculating aggregated losses")
 
     # Extract from teh shape file the required values
     oid = get_field(featureid, fields, records, dtype=int)
@@ -139,10 +139,10 @@ def aggregate(records, fields, featureid, features, return_periods):
     aac = get_field('ann_cost', fields, records)
 
     # Aggregate the values to region and subregion:
-    r_value, sr_value = extract_zone_values(oid, features, value)
-    r_aac, sr_aac = extract_zone_values(oid, features, aac)
-    r_area, sr_area = extract_zone_values(oid, features, polygon_area)
-    r_flarea, sr_flarea = extract_zone_values(oid, features, flarea)
+    r_value, sr_value = extractZoneValues(oid, features, value)
+    r_aac, sr_aac = extractZoneValues(oid, features, aac)
+    r_area, sr_area = extractZoneValues(oid, features, polygon_area)
+    r_flarea, sr_flarea = extractZoneValues(oid, features, flarea)
     output = AvDict()
     sroutput = AvDict()
 
@@ -162,14 +162,14 @@ def aggregate(records, fields, featureid, features, return_periods):
         output[region]['ann_dmg'] = output[region]['ann_loss'] * \
                                             region_flarea/region_area
 
-    __logger__.debug("Calculating zonal totals for each return period")
+    LOG.debug("Calculating zonal totals for each return period")
     for ret_per in return_periods:
         dmg_key = 'dmg' + str(int(ret_per))
         cost_key = 'cost' + str(int(ret_per))
         flarea_key = 'flarea' + str(int(ret_per))
 
         cost = get_field(cost_key, fields, records)
-        r_cost, sr_cost = extract_zone_values(oid, features, cost)
+        r_cost, sr_cost = extractZoneValues(oid, features, cost)
 
         for region in r_value.keys():
             cost_sum = np.sum(r_cost[region])
@@ -202,7 +202,7 @@ def aggregate(records, fields, featureid, features, return_periods):
         flarea_key = 'flarea' + str(int(ret_per))
         cost_key = 'cost' + str(int(ret_per))
         cost = get_field(cost_key, fields, records)
-        r_cost, sr_cost = extract_zone_values(oid, features, cost)
+        r_cost, sr_cost = extractZoneValues(oid, features, cost)
 
         for region in sr_value.keys():
             cost_sum = np.sum(sr_cost[region])
@@ -215,7 +215,7 @@ def aggregate(records, fields, featureid, features, return_periods):
 
     return output, sroutput
 
-def plot_loss_output(zonename, loss, probs, output_path):
+def plotLossOutput(zonename, loss, probs, output_path):
     """
     Plot loss results against probability
     """
@@ -236,7 +236,7 @@ def plot_loss_output(zonename, loss, probs, output_path):
     pyplot.title("Probability-loss curve for %s" % zonename)
     pyplot.savefig(filename)
 
-def plot_cost_output(zonename, costs, probs, output_path):
+def plotCostOutput(zonename, costs, probs, output_path):
     """
     Plot cost results against probability
     """
@@ -258,7 +258,7 @@ def plot_cost_output(zonename, costs, probs, output_path):
     pyplot.title("Probability-cost curve for %s" % zonename)
     pyplot.savefig(filename)
 
-def plot_dmg_output(zonename, dmg, probs, output_path):
+def plotDmgOutput(zonename, dmg, probs, output_path):
     """
     Plot damaged floor area equivalent results against probability
     """
@@ -280,12 +280,12 @@ def plot_dmg_output(zonename, dmg, probs, output_path):
     pyplot.title("Probability-damage curve for %s" % zonename)
     pyplot.savefig(filename)
 
-def write_loss_output(output_file, data, return_periods, plot=True):
+def writeLossOutput(output_file, data, return_periods, plot=True):
     """
     Write aggregated loss information to file and plot probability-loss
     curves for each zone
     """
-    __logger__.info("Writing loss data to {0}".format(output_file))
+    LOG.info("Writing loss data to {0}".format(output_file))
     rps = np.concatenate([[1], return_periods])
     probs = probability(rps)
 
@@ -305,16 +305,16 @@ def write_loss_output(output_file, data, return_periods, plot=True):
 
         row = np.concatenate([[0], row])
         if plot:
-            plot_loss_output(zone, row, probs, pjoin(output_path, 'plots'))
+            plotLossOutput(zone, row, probs, pjoin(output_path, 'plots'))
 
     output_fileh.close()
 
-def write_dmg_output(output_file, data, return_periods, plot=True):
+def writeDmgOutput(output_file, data, return_periods, plot=True):
     """
     Write aggregated loss information to file and plot probability-loss
     curves for each zone
     """
-    __logger__.info("Writing damage data to {0}".format(output_file))
+    LOG.info("Writing damage data to {0}".format(output_file))
     rps = np.concatenate([[1], return_periods])
     probs = probability(rps)
 
@@ -334,16 +334,16 @@ def write_dmg_output(output_file, data, return_periods, plot=True):
         row = np.concatenate([[0], row])
 
         if plot:
-            plot_dmg_output(zone, row, probs, pjoin(output_path, 'plots'))
+            plotDmgOutput(zone, row, probs, pjoin(output_path, 'plots'))
 
     output_fileh.close()
 
-def write_cost_output(output_file, data, return_periods, plot=True):
+def writeCostOutput(output_file, data, return_periods, plot=True):
     """
     Write aggregated cost information to file and plot probability-cost
     curves for each zone.
     """
-    __logger__.info("Writing cost data to {0}".format(output_file))
+    LOG.info("Writing cost data to {0}".format(output_file))
     rps = np.concatenate([[1], return_periods])
     probs = probability(rps)
 
@@ -364,7 +364,7 @@ def write_cost_output(output_file, data, return_periods, plot=True):
 
         row = np.concatenate([[0], row])
         if plot:
-            plot_cost_output(zone, row, probs, pjoin(output_path, 'plots'))
+            plotCostOutput(zone, row, probs, pjoin(output_path, 'plots'))
 
     output_fileh.close()
     return
