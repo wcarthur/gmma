@@ -60,7 +60,7 @@ def damage(wind_speed, mu, sigma, scale=1.0):
 
     return dmg
 
-def adjustCurves(bld_type, vmask, mu, sigma, scale):
+def adjustDamageCurves(bld_type, vmask, mu, sigma, scale):
     """
     Change the vulnerability curve for those building types
     where there are different materials used in different
@@ -69,7 +69,7 @@ def adjustCurves(bld_type, vmask, mu, sigma, scale):
     IN THIS SECTION
     """
 
-    LOG.debug( ("Adjusting curves for building types with"
+    LOG.debug( ("Adjusting curves for building types with "
                     "age-dependent vulnerability") )
     if bld_type.startswith('MWS'):
         np.putmask(mu, vmask, 398.)
@@ -96,4 +96,89 @@ def adjustCurves(bld_type, vmask, mu, sigma, scale):
         np.putmask(mu, vmask, 477.)
         np.putmask(sigma, vmask, 0.46)
 
+    return mu, sigma, scale
+
+def adjustFragilityCurves(bld_type, vmask, mu, sigma, scale, state):
+    """
+    Change the fragility curve for those building types
+    where there are different materials used in different
+    eras. NOTE: THESE ARE HARD-CODED VALUES. ANY CHANGE TO
+    THE VULNERABILITY CURVES WILL REQUIRE CHANGES TO BE MADE
+    IN THIS SECTION
+    """
+    LOG.debug( ("Adjusting curves for building types with "
+                    "age-dependent fragility") )
+
+    if state == 'slight':
+        if bld_type.startswith('MWS'):
+            np.putmask(mu, vmask, 266.)
+            np.putmask(sigma, vmask, 0.17)
+        elif bld_type.startswith('CHB'):
+            np.putmask(mu, vmask, 233.)
+            np.putmask(sigma, vmask, 0.33)
+        elif bld_type.startswith('CWS'):
+            np.putmask(mu, vmask, 266.)
+            np.putmask(sigma, vmask, 0.17)
+        elif (bld_type.startswith('C1_L') |
+             bld_type.startswith('C2_L') |
+             bld_type.startswith('C4_L') |
+             bld_type.startswith('PC1_L') |
+             bld_type.startswith('PC2_L')):
+            np.putmask(mu, vmask, 209.)
+            np.putmask(sigma, vmask, 0.23)
+
+    elif state == 'moderate':
+        if bld_type.startswith('MWS'):
+            np.putmask(mu, vmask, 311.)
+            np.putmask(sigma, vmask, 0.20)
+        elif bld_type.startswith('CHB'):
+            np.putmask(mu, vmask, 260.)
+            np.putmask(sigma, vmask, 0.25)
+        elif bld_type.startswith('CWS'):
+            np.putmask(mu, vmask, 311.)
+            np.putmask(sigma, vmask, 0.20)
+        elif (bld_type.startswith('C1_L') |
+             bld_type.startswith('C2_L') |
+             bld_type.startswith('C4_L') |
+             bld_type.startswith('PC1_L') |
+             bld_type.startswith('PC2_L')):
+            np.putmask(mu, vmask, 241.)
+            np.putmask(sigma, vmask, 0.20)
+
+    elif state == 'extensive':
+        if bld_type.startswith('MWS'):
+            np.putmask(mu, vmask, 354.)
+            np.putmask(sigma, vmask, 0.09)
+        elif bld_type.startswith('CHB'):
+            np.putmask(mu, vmask, 290.)
+            np.putmask(sigma, vmask, 0.23)
+        elif bld_type.startswith('CWS'):
+            np.putmask(mu, vmask, 354.)
+            np.putmask(sigma, vmask, 0.09)
+        elif (bld_type.startswith('C1_L') |
+             bld_type.startswith('C2_L') |
+             bld_type.startswith('C4_L') |
+             bld_type.startswith('PC1_L') |
+             bld_type.startswith('PC2_L')):
+            np.putmask(mu, vmask, 277.)
+            np.putmask(sigma, vmask, 0.17)
+
+    elif state == 'complete':
+        if bld_type.startswith('MWS'):
+            np.putmask(mu, vmask, 379.)
+            np.putmask(sigma, vmask, 0.07)
+        elif bld_type.startswith('CHB'):
+            np.putmask(mu, vmask, 323.)
+            np.putmask(sigma, vmask, 0.17)
+        elif bld_type.startswith('CWS'):
+            np.putmask(mu, vmask, 379.)
+            np.putmask(sigma, vmask, 0.07)
+        elif (bld_type.startswith('C1_L') |
+             bld_type.startswith('C2_L') |
+             bld_type.startswith('C4_L') |
+             bld_type.startswith('PC1_L') |
+             bld_type.startswith('PC2_L')):
+            np.putmask(mu, vmask, 371.)
+            np.putmask(sigma, vmask, 0.13)
+            
     return mu, sigma, scale

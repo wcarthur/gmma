@@ -20,7 +20,7 @@
 import os
 import csv
 from time import ctime
-import numpy
+import numpy as np
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -32,14 +32,19 @@ def parseCostFile(cost_file):
     future processing.
     """
     LOG.info('Reading cost data from %s' % os.path.abspath(cost_file))
-    sinfo = os.stat(cost_file)
-    moddate = ctime(sinfo.st_mtime)
-    LOG.info('Last modified %s' % moddate)
+    try:
+        sinfo = os.stat(cost_file)
+    except (IOError, WindowsError):
+        LOG.exception( "Failed to open cost file: %s" % cost_file)
+        raise IOError("Failed to open cost file: %s" % cost_file)
+    else:
+        moddate = ctime(sinfo.st_mtime)
+        LOG.info('Last modified %s' % moddate)
 
     building_cost_data = dict()
     try:
         cost_file_handle = open(cost_file, 'rb')
-    except IOError:
+    except (IOError, WindowsError):
         LOG.exception( "Failed to open cost file: %s" % cost_file)
         raise IOError("Failed to open cost file: %s" % cost_file)
     else:
@@ -99,7 +104,7 @@ def calculateValue(floor_area, landuse4, landuse5, building_type,
     # building height:
     bldg_type = building_type.split('_', 1)[0]
 
-    value = numpy.empty(len(floor_area))
+    value = np.empty(len(floor_area))
 
     for i, [lu4, lu5, fla] in enumerate(zip(landuse4, landuse5, floor_area)):
         # Hard-coded fix for coverage issues (detailed by G. Davies

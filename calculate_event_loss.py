@@ -89,6 +89,8 @@ import time
 from datetime import datetime
 from functools import wraps
 import traceback
+import pdb
+
 from os.path import join as pjoin, isdir, abspath
 try:
     import numpy as np
@@ -101,8 +103,9 @@ try:
     from get_records import getField
     from cost_data import parseCostFile, calculateValue
     from parse_shapefile import writeShapefile, parseShapefile
-    from damage import damage, adjustCurves
+    from damage import damage, adjustDamageCurves, adjustFragilityCurves
     from probability import probability
+    from AvDict import AvDict
 except ImportError as error:
     print "Cannot import all required modules"
     print "Import error: {0}".format( error )
@@ -187,11 +190,6 @@ def totalDamage(building_types, fields, records, building_costs):
     # changes to the construction materials used.
     vmask = np.array(vintage)=='Post-1992'
 
-    #rp_damage = np.empty((len(return_periods), nrecords))
-    #rp_costs = np.empty((len(return_periods), nrecords))
-    #rp_dmgfl = np.empty((len(return_periods), nrecords))
-
-    #for n, ret_per in enumerate(return_periods):
     LOG.info("Processing wind speed")
     wind_speed = getField('vmax', fields, records)
 
@@ -208,7 +206,7 @@ def totalDamage(building_types, fields, records, building_costs):
         sigma = building_types[bld_type]['sigma']*np.ones(len(wind_speed))
         scale = building_types[bld_type]['scale']*np.ones(len(wind_speed))
 
-        mu, sigma, scale = adjustCurves(bld_type, vmask, mu, sigma, scale)
+        mu, sigma, scale = adjustDamageCurves(bld_type, vmask, mu, sigma, scale)
 
         d = damage(wind_speed, mu, sigma, scale)
 
@@ -228,25 +226,118 @@ def totalDamage(building_types, fields, records, building_costs):
     for i, record in enumerate(records):
         record.extend([totdmg[i], totcost[i], totdmgfl[i]])
 
-        #rp_damage[n, :] = totdmg
-        #rp_costs[n, :] = totcost
-        #rp_dmgfl[n, :] = totdmgfl
+    return fields, records
 
-        #LOG.info("Size of records = {0} MB".format(
-        #            total_size(records)/1024**2))
+def damageState(building_types, fields, records, dmgstate):
+    """
+    Calculate probability of damage states for all building types.
 
-    #LOG.info("Calculating annualised losses")
-    # Calculate annual probability:
-    #annual_prob = probability(return_periods)
-    #for i, record in enumerate(records):
-    #    annualised_loss = integrateLoss(annual_prob, rp_damage[:, i])
-    #    annualised_costs = integrateLoss(annual_prob, rp_costs[:, i])
-    #    annualised_dmgfl = integrateLoss(annual_prob, rp_dmgfl[:, i])
-    #    record.extend([annualised_loss, annualised_costs, annualised_dmgfl])
+    :param dict building_types: Dict of building type data, including the
+                                parameters for the fragility curves. 
+    :param list fields: List of field names from the input file.
+    :param list records: List of lists of records from the input file.
+    :param str state: Damage state to calculate. Must be one of
+                      'slight', 'moderate', 'extensive' or 'complete'.
+
+    """
+    if dmgstate not in ['slight', 'moderate', 'extensive', 'complete']:
+        raise KeyError("Invalid damage state requested: {0}".format(dmgstate))
+
+    nrecords = len(records)
+    n_bldg_type = len(building_types.keys())
+    vintage = getField('ERA_CONST', fields, records, str)
+    area_sqm = getField('AREA_SQM', fields, records)
+    
+    if dmgstate == 'slight':
+        state = 'sl'
+    elif dmgstate == 'moderate':
+        state = 'mod'
+    elif dmgstate == 'extensive':
+        state = 'ext'
+    elif dmgstate == 'complete':
+        state = 'c'
+        
+    values = np.empty((n_bldg_type, nrecords))
+
+    vmask = np.array(vintage)=='Post-1992'
+    wind_speed = getField('vmax', fields, records)
+    prob_state = np.empty((len(building_types.keys()), nrecords))
+    LOG.debug("Appending required fields for damage state metrics")
+
+    for i, bld_type in enumerate(building_types.keys()):
+        LOG.debug("New field name is: {0}".format('_'.join([bld_type, state])))
+        fieldname = '_'.join([bld_type, state])
+        fields.append([fieldname, "N", 10, 6])
+        flarea = getField(bld_type, fields, records)
+
+        # Calculate the probability of being in a damage state:
+        mu = building_types[bld_type][state+'_mu']*np.ones(len(wind_speed))
+        sigma = building_types[bld_type][state+'_sd']*np.ones(len(wind_speed))
+        scale = building_types[bld_type][state+'_scale']*np.ones(len(wind_speed))
+
+        mu, sigma, scale = adjustFragilityCurves(bld_type, vmask, mu,
+                                              sigma, scale, dmgstate)
+
+        prob_state[i,:] = damage(wind_speed, mu, sigma, scale)
+        
+    for i, record in enumerate(records):
+        record.extend(*[prob_state[:,i]])
 
     return fields, records
 
-def process(fields, records, vulnerability_file, cost_file):
+def calculatePopulation(fields, records, vulnerability_file):
+    """
+    Calculate the population affected statistic for the event.
+    "Population affected" is defined to be the population in building types
+    that have 70% or greater probability of being in a moderate damage state,
+    or 30% or greater probability of being in an extensive damage state.
+
+    The population in a land parcel is proportionally distributed amongst all
+    building types in the parcel.
+
+    :param list fields: List of fields in the dataset.
+    :param list records: List of lists of records from the input file.
+    :param str vulnerability_file: Filename of csv-format file that holds the
+                                   parameters for the vulnerability curves
+                                   for all buildings.
+    """
+
+    LOG.info("Calculating affected population")
+    building_types = parseVulnerability(vulnerability_file)
+    nrecords = len(records)
+    n_bldg_type = len(building_types.keys())
+    flarea = getField('FLAREA_SUM', fields, records)
+    pop = getField('POP_EST', fields, records)
+    pop_affected = np.zeros((n_bldg_type, nrecords))
+    
+    for i, bld_type in enumerate(building_types.keys()):
+        mod_dmg_name = bld_type + '_mod'
+        ext_dmg_name = bld_type + '_ext'
+        mod_dmg_prob = getField(mod_dmg_name, fields, records)
+        ext_dmg_prob = getField(ext_dmg_name, fields, records)
+
+        # Damage thresholds: >70% probability of moderate damage; 
+        #                    >30% probability of extensive damage.
+        mod_idx = np.where(mod_dmg_prob >= 0.7)
+        ext_idx = np.where(ext_dmg_prob >= 0.3)
+
+        bld_flarea = getField(bld_type, fields, records)
+        xx = bld_flarea * pop / flarea
+
+        pop_affected[i, mod_idx] = xx[mod_idx]
+        pop_affected[i, ext_idx] = xx[ext_idx]
+
+    population_affected = np.sum(pop_affected, axis=0)
+
+    np.putmask(population_affected, population_affected > pop, pop)
+
+    fields.append(['POP_AFFECT', "N", 10, 2])
+    for i, record in enumerate(records):
+        record.extend([population_affected[i]])
+
+    return fields, records
+    
+def processDamage(fields, records, vulnerability_file, cost_file):
     """
     Process the data to calculate loss information:
     Input arguments:
@@ -273,6 +364,12 @@ def process(fields, records, vulnerability_file, cost_file):
     output_fields, \
         output_records = totalDamage(building_types, fields,
                                      records, building_costs)
+    return output_fields, output_records
+
+def processFragility(fields, records, vulnerability_file, state):
+    building_types = parseVulnerability(vulnerability_file)
+    output_fields, \
+      output_records = damageState(building_types, fields, records, state)
 
     return output_fields, output_records
 
@@ -292,6 +389,7 @@ def parseVulnerability(vuln_file):
     mu = []
     sigma = []
     scale = []
+    params = AvDict()
     with open(vuln_file, 'rb') as csvfile:
         reader = csv.reader(csvfile, quotechar='"')
         for row in reader:
@@ -299,25 +397,54 @@ def parseVulnerability(vuln_file):
                 pass
             else:
                 try:
-                    up_vuln_type.append(row[0])
-                    # set vulnerabilities for different building types
-                    mu.append(float(row[1]))
-                    sigma.append(float(row[2]))
-                    scale.append(float(row[3]))
+                    params[str(row[0])] = {'mu':float(row[1]),
+                                           'sigma':float(row[2]),
+                                           'scale':float(row[3]),
+                                           'sl_mu':float(row[4]),
+                                           'sl_sd':float(row[5]),
+                                           'sl_scale':float(row[6]),
+                                           'mod_mu':float(row[7]),
+                                           'mod_sd':float(row[8]),
+                                           'mod_scale':float(row[9]),
+                                           'ext_mu':float(row[10]),
+                                           'ext_sd':float(row[11]),
+                                           'ext_scale':float(row[12]),
+                                           'c_mu':float(row[13]),
+                                           'c_sd':float(row[14]),
+                                           'c_scale':float(row[15])}
+
                 except ValueError:
                     # Catch the case of missing values:
-                    mu.append(10000.0)
-                    sigma.append(0.1)
-                    scale.append(0.0)
+                    params[str(row[0])] ={'mu':10000.0,
+                                           'sigma':0.1,
+                                           'scale':0.0,
+                                           'sl_mu':10000.,
+                                           'sl_sd':0.1,
+                                           'sl_scale':0.0,
+                                           'mod_mu':10000.,
+                                           'mod_sd':0.1,
+                                           'mod_scale':0.0,
+                                           'ext_mu':10000.,
+                                           'ext_sd':0.1,
+                                           'ext_scale':0.0,
+                                           'c_mu':10000.,
+                                           'c_sd':0.1,
+                                           'c_scale':0.0}
+                    
+    LOG.debug("Vulnerability information")
+    LOG.debug("Class : mu : sigma : scale ")
+    for key, value in params.items():
+        LOG.debug(("{0:<6}: {1:<5.3f} : {2:<5.2f} : {3:<6.4f} : "
+                   "{4:<5.3f} : {5:<5.2f} : {6:<6.4f} : "
+                   "{7:<5.3f} : {8:<5.2f} : {9:<6.4f} : "
+                   "{10:<5.3f} : {11:<5.2f} : {12:<6.4f} : "
+                   "{13:<5.3f} : {14:<5.2f} : {15:<6.4f}" ).format(
+                       key, value['mu'], value['sigma'], value['scale'],
+                       value['sl_mu'], value['sl_sd'], value['sl_scale'],
+                       value['mod_mu'], value['mod_sd'], value['mod_scale'],
+                       value['ext_mu'], value['ext_sd'], value['ext_scale'],
+                       value['c_mu'], value['c_sd'], value['c_scale']))
 
-    params = dict()
-    LOG.debug("Class : mu : sigma")
-    for i, k in enumerate(up_vuln_type):
-        params[k] = {'mu':mu[i], 'sigma':sigma[i], 'scale':scale[i]}
-        LOG.debug( ("{0:<6}: \
-                       {1:<5.3f} : \
-                       {2:<5.2f} : \
-                       {3:<5.2f}").format(k, mu[i], sigma[i], scale[i]))
     return params
 
 def calculateAverageLoss(records, fields, output_folder):
@@ -326,22 +453,9 @@ def calculateAverageLoss(records, fields, output_folder):
     for the region.
     """
 
-    #avg_loss = np.empty(len(return_periods))
-    #tot_cost = np.empty(len(return_periods))
-
     fh = open(pjoin(output_folder,'annual_loss.csv'), 'w')
 
     fh.write( "Return period, average loss, cost\n" )
-    #for i, ret_per in enumerate(return_periods):
-    #    dmg_key = 'dmg' + str(int(ret_per))
-    #    cost_key = 'cost' + str(int(ret_per))
-
-    #    dmg = getField(dmg_key, fields, records)
-    #    cost = getField(cost_key, fields, records)
-    #    avg_loss[i] = np.sum(dmg*cost)/np.sum(cost)
-    #    tot_cost[i] = np.sum(cost)
-    #    fh.write("{0:d}, {1:f}, P{2:,d}\n".format(
-    #            int(ret_per), avg_loss[i], int(tot_cost[i])))
 
     loss = getField('loss', fields, records)
     cost = getField('cost', fields, records)
@@ -352,8 +466,6 @@ def calculateAverageLoss(records, fields, output_folder):
     fh.write("Cost: P{0:,} (total value: P{1:,})".
              format(int(np.sum(cost)), int(np.sum(values))))
     fh.close()
-
-    #lot_results(avg_loss, tot_cost, return_periods, output_folder)
 
     return
 
@@ -410,7 +522,7 @@ def main():
     other functions to process the data
     """
 
-    flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
+    flStartLog(log_file=flConfigFile('.log'), log_level='DEBUG',
                verbose=True, datestamp=True)
     LOG.info("Parsing command line arguments")
     parser = argparse.ArgumentParser()
@@ -456,16 +568,29 @@ def main():
     
     output_file = pjoin(abspath(output_path), 
                         "event_loss_{0}".format(curdatestr))
+    
 
     # Load the exposure file
     shapes, fields, records = parseShapefile(shape_file)
 
-    output_fields, output_records = process(fields, records, vulnerability_file,
-                                            cost_file)
+    output_fields, output_records = processDamage(fields, records, vulnerability_file,
+                                                  cost_file)
 
     # Write out the data to another shapefile
     writeShapefile(output_file, output_fields, shapes, output_records)
 
+    damage_states = ['slight', 'moderate', 'extensive', 'complete']
+    for state in damage_states:
+        output_fields, output_records = processFragility(fields, records,
+                                                         vulnerability_file,
+                                                         state)
+
+    output_fields, output_records = calculatePopulation(output_fields,
+                                                        output_records,
+                                                        vulnerability_file)
+    output_file = pjoin(abspath(output_path), 
+                        "event_damage_states_{0}".format(curdatestr))
+    writeShapefile(output_file, output_fields, shapes, output_records)
     # Calculate average loss across the entire region contained in the
     # input shapefile:
     calculateAverageLoss(output_records, output_fields, output_path)
