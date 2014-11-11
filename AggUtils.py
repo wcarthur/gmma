@@ -21,7 +21,7 @@ import matplotlib
 matplotlib.use('Agg', warn=False)
 
 from matplotlib import pyplot
-from get_records import get_field
+from get_records import getField
 from probability import probability
 from AvDict import AvDict
 
@@ -103,8 +103,8 @@ def loadZonesFromRecords(records, fields, featureid, zoneid):
 
     output = dict()
 
-    featurerecs = get_field(featureid, fields, records, dtype=int)
-    zonerecs = get_field(zoneid, fields, records, dtype=str)
+    featurerecs = getField(featureid, fields, records, dtype=int)
+    zonerecs = getField(zoneid, fields, records, dtype=str)
 
     for feature, zone in zip(featurerecs, zonerecs):
         try:
@@ -132,11 +132,11 @@ def aggregate(records, fields, featureid, features, return_periods):
     LOG.info("Calculating aggregated losses")
 
     # Extract from teh shape file the required values
-    oid = get_field(featureid, fields, records, dtype=int)
-    value = get_field('bldg_value', fields, records)
-    flarea = get_field('FLAREA_SUM', fields, records)
-    polygon_area = get_field('AREA_SQM', fields, records)
-    aac = get_field('ann_cost', fields, records)
+    oid = getField(featureid, fields, records, dtype=int)
+    value = getField('bldg_value', fields, records)
+    flarea = getField('FLAREA_SUM', fields, records)
+    polygon_area = getField('AREA_SQM', fields, records)
+    aac = getField('ann_cost', fields, records)
 
     # Aggregate the values to region and subregion:
     r_value, sr_value = extractZoneValues(oid, features, value)
@@ -168,7 +168,7 @@ def aggregate(records, fields, featureid, features, return_periods):
         cost_key = 'cost' + str(int(ret_per))
         flarea_key = 'flarea' + str(int(ret_per))
 
-        cost = get_field(cost_key, fields, records)
+        cost = getField(cost_key, fields, records)
         r_cost, sr_cost = extractZoneValues(oid, features, cost)
 
         for region in r_value.keys():
@@ -201,7 +201,7 @@ def aggregate(records, fields, featureid, features, return_periods):
         dmg_key = 'dmg' + str(int(ret_per))
         flarea_key = 'flarea' + str(int(ret_per))
         cost_key = 'cost' + str(int(ret_per))
-        cost = get_field(cost_key, fields, records)
+        cost = getField(cost_key, fields, records)
         r_cost, sr_cost = extractZoneValues(oid, features, cost)
 
         for region in sr_value.keys():

@@ -522,7 +522,7 @@ def main():
     other functions to process the data
     """
 
-    flStartLog(log_file=flConfigFile('.log'), log_level='DEBUG',
+    flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
                verbose=True, datestamp=True)
     LOG.info("Parsing command line arguments")
     parser = argparse.ArgumentParser()

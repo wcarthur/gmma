@@ -100,7 +100,7 @@ try:
     from get_records import getField
     from cost_data import parseCostFile, calculateValue
     from parse_shapefile import writeShapefile, parseShapefile
-    from damage import damage, adjustCurves
+    from damage import damage, adjustDamageCurves
     from probability import probability
 
 except ImportError as error:
@@ -215,7 +215,7 @@ def totalDamage(building_types, fields, records, return_periods,
             sigma = building_types[bld_type]['sigma']*np.ones(len(wind_speed))
             scale = building_types[bld_type]['scale']*np.ones(len(wind_speed))
 
-            mu, sigma, scale = adjustCurves(bld_type, vmask, mu, sigma, scale)
+            mu, sigma, scale = adjustDamageCurves(bld_type, vmask, mu, sigma, scale)
 
             d = damage(wind_speed, mu, sigma, scale)
 
