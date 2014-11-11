@@ -89,22 +89,18 @@ import time
 from datetime import datetime
 from functools import wraps
 import traceback
-import pdb
 
 from os.path import join as pjoin, isdir, abspath
 try:
     import numpy as np
     from files import flConfigFile, flModDate, flStartLog
-    from scipy.integrate import simps
     import matplotlib
     matplotlib.use('Agg', warn=False)
 
-    from matplotlib import pyplot
     from get_records import getField
     from cost_data import parseCostFile, calculateValue
     from parse_shapefile import writeShapefile, parseShapefile
     from damage import damage, adjustDamageCurves, adjustFragilityCurves
-    from probability import probability
     from AvDict import AvDict
 except ImportError as error:
     print "Cannot import all required modules"
@@ -138,8 +134,13 @@ def timer(func):
 
 
 def showSyntax(exit_code=0):
-    """Display how to use this script and exit with the given exit
-    code"""
+    """
+    Display how to use this script and exit with the given exit
+    code.
+
+    :param int exit_code: Exit code (default 0).
+    
+    """
     if sys.stdout.isatty():
         print sys.argv[0]
         print __doc__
@@ -157,15 +158,12 @@ def totalDamage(building_types, fields, records, building_costs):
     LOG.info("Calculating total damage to building stock")
     LOG.debug("Calculating total value of building stock in each feature")
 
-    nrecords = len(records)
-    n_bldg_type = len(building_types.keys())
-
     lu4 = getField('L4_USE', fields, records, str)
     lu5 = getField('L5_USE', fields, records, str)
     vintage = getField('ERA_CONST', fields, records, str)
     area_sqm = getField('AREA_SQM', fields, records)
 
-    values = np.empty((n_bldg_type, nrecords))
+    values = np.empty((len(building_types.keys()), len(records)))
 
     for i, bld_type in enumerate(building_types.keys()):
         flarea = getField(bld_type, fields, records)
@@ -193,8 +191,8 @@ def totalDamage(building_types, fields, records, building_costs):
     LOG.info("Processing wind speed")
     wind_speed = getField('vmax', fields, records)
 
-    costs = np.empty((len(building_types.keys()), nrecords))
-    dmg_flarea = np.empty((len(building_types.keys()), nrecords))
+    costs = np.empty((len(building_types.keys()), len(records)))
+    dmg_flarea = np.empty((len(building_types.keys()), len(records)))
 
     for i, bld_type in enumerate(building_types.keys()):
         # Calculate corresponding value of built assets:
@@ -207,11 +205,9 @@ def totalDamage(building_types, fields, records, building_costs):
         scale = building_types[bld_type]['scale']*np.ones(len(wind_speed))
 
         mu, sigma, scale = adjustDamageCurves(bld_type, vmask, mu, sigma, scale)
-
-        d = damage(wind_speed, mu, sigma, scale)
-
-        costs[i, :] = d*value
-        dmg_flarea[i, :] = 100.*d*flarea/area_sqm
+        dmg = damage(wind_speed, mu, sigma, scale)
+        costs[i, :] = dmg*value
+        dmg_flarea[i, :] = 100.*dmg*flarea/area_sqm
 
     totcost = np.sum(costs, axis=0)
     totdmg = totcost/totvalue
@@ -243,10 +239,7 @@ def damageState(building_types, fields, records, dmgstate):
     if dmgstate not in ['slight', 'moderate', 'extensive', 'complete']:
         raise KeyError("Invalid damage state requested: {0}".format(dmgstate))
 
-    nrecords = len(records)
-    n_bldg_type = len(building_types.keys())
     vintage = getField('ERA_CONST', fields, records, str)
-    area_sqm = getField('AREA_SQM', fields, records)
     
     if dmgstate == 'slight':
         state = 'sl'
@@ -257,31 +250,30 @@ def damageState(building_types, fields, records, dmgstate):
     elif dmgstate == 'complete':
         state = 'c'
         
-    values = np.empty((n_bldg_type, nrecords))
-
     vmask = np.array(vintage)=='Post-1992'
     wind_speed = getField('vmax', fields, records)
-    prob_state = np.empty((len(building_types.keys()), nrecords))
+    prob_state = np.empty((len(building_types.keys()), len(records)))
     LOG.debug("Appending required fields for damage state metrics")
 
     for i, bld_type in enumerate(building_types.keys()):
         LOG.debug("New field name is: {0}".format('_'.join([bld_type, state])))
-        fieldname = '_'.join([bld_type, state])
-        fields.append([fieldname, "N", 10, 6])
-        flarea = getField(bld_type, fields, records)
+        fields.append(['_'.join([bld_type, state]), "N", 10, 6])
 
         # Calculate the probability of being in a damage state:
-        mu = building_types[bld_type][state+'_mu']*np.ones(len(wind_speed))
-        sigma = building_types[bld_type][state+'_sd']*np.ones(len(wind_speed))
-        scale = building_types[bld_type][state+'_scale']*np.ones(len(wind_speed))
+        mu = building_types[bld_type][state+'_mu'] * \
+          np.ones(len(wind_speed))
+        sigma = building_types[bld_type][state+'_sd'] * \
+          np.ones(len(wind_speed))
+        scale = building_types[bld_type][state+'_scale'] * \
+          np.ones(len(wind_speed))
 
         mu, sigma, scale = adjustFragilityCurves(bld_type, vmask, mu,
                                               sigma, scale, dmgstate)
 
-        prob_state[i,:] = damage(wind_speed, mu, sigma, scale)
+        prob_state[i, :] = damage(wind_speed, mu, sigma, scale)
         
     for i, record in enumerate(records):
-        record.extend(*[prob_state[:,i]])
+        record.extend(*[prob_state[:, i]])
 
     return fields, records
 
@@ -367,6 +359,10 @@ def processDamage(fields, records, vulnerability_file, cost_file):
     return output_fields, output_records
 
 def processFragility(fields, records, vulnerability_file, state):
+    """
+    Process the building data to determine damage states using
+    fragility curves.
+    """
     building_types = parseVulnerability(vulnerability_file)
     output_fields, \
       output_records = damageState(building_types, fields, records, state)
@@ -385,10 +381,6 @@ def parseVulnerability(vuln_file):
     moddate = flModDate(vuln_file)
     LOG.info('Last modified: {0}'.format(moddate))
 
-    up_vuln_type = []
-    mu = []
-    sigma = []
-    scale = []
     params = AvDict()
     with open(vuln_file, 'rb') as csvfile:
         reader = csv.reader(csvfile, quotechar='"')
@@ -469,52 +461,6 @@ def calculateAverageLoss(records, fields, output_folder):
 
     return
 
-def plotResults(avg_loss, tot_cost, return_periods, output_folder):
-    """
-    Plot the results as PML curves or similar
-    """
-
-    output_path = pjoin(output_folder, 'plots')
-    
-    return_periods = np.concatenate([[1], return_periods])
-    probs = probability(return_periods)
-
-    avg_loss = np.concatenate([[0], avg_loss])
-    tot_cost = np.concatenate([[0], tot_cost])
-
-    LOG.info("Plotting probability-loss curve")
-    fig1 = pyplot.figure()
-    ax1 = fig1.add_subplot(111)
-    ax1.fill_between(avg_loss*100., probs, 0.0, lw=2, alpha=0.5)
-    ax1.set_yscale('log', nonposy='clip')
-    ax1.set_ylim(0.0001, 1.0)
-    ax1.grid(True, which='both', linestyle=':', color='k')
-    pyplot.xlabel("Damage ratio (% of reconstruction cost)")
-    pyplot.ylabel("Annual probability")
-    pyplot.title("Probability-loss curve")
-    pyplot.savefig(pjoin(output_path, "probability-loss.png"))
-    LOG.info("Plotting return period-loss curve")
-    pyplot.figure(2)
-    pyplot.semilogx(return_periods, avg_loss*100., lw=2, marker='+', ms=10)
-    pyplot.xlabel("Return period (years)")
-    pyplot.ylabel("Damage ratio (% of reconstruction cost)")
-    pyplot.grid(True, which='both', linestyle=':', color='k')
-    pyplot.title("Return period loss curve")
-    pyplot.savefig(pjoin(output_path, "rp-loss-curve.png"))
-    LOG.info("Plotting probability-cost curve")
-    fig3 = pyplot.figure(3)
-    ax3 = fig3.add_subplot(111)
-    ax3.fill_between(tot_cost/np.power(10., 9), probs, 0.0, lw=2, alpha=0.5)
-    ax3.set_yscale('log', nonposy='clip')
-    ax3.set_ylim(0.0001, 1.0)
-    ax3.grid(True, which='both', linestyle=':', color='k')
-    pyplot.xlabel("Loss (billion Peso)")
-    pyplot.ylabel("Annual probability")
-    pyplot.title("Probability-loss curve")
-    pyplot.savefig(pjoin(output_path, "probability-cost.png"))
-
-    return
-
 #@timer
 def main():
     """
@@ -573,14 +519,14 @@ def main():
     # Load the exposure file
     shapes, fields, records = parseShapefile(shape_file)
 
-    output_fields, output_records = processDamage(fields, records, vulnerability_file,
+    output_fields, output_records = processDamage(fields, records,
+                                                  vulnerability_file,
                                                   cost_file)
 
     # Write out the data to another shapefile
     writeShapefile(output_file, output_fields, shapes, output_records)
 
-    damage_states = ['slight', 'moderate', 'extensive', 'complete']
-    for state in damage_states:
+    for state in ['slight', 'moderate', 'extensive', 'complete']:
         output_fields, output_records = processFragility(fields, records,
                                                          vulnerability_file,
                                                          state)

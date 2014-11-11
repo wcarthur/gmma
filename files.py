@@ -44,7 +44,9 @@
 
 $Id: files.py 780 2013-02-05 22:52:39Z carthur $
 """
-import os, sys, pdb, logging
+import os
+import sys
+import logging
 
 try:
     import hashlib
