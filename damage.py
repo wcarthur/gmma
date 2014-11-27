@@ -109,6 +109,9 @@ def adjustFragilityCurves(bld_type, vmask, mu, sigma, scale, state):
     LOG.debug( ("Adjusting curves for building types with "
                     "age-dependent fragility") )
 
+    if state not in ['slight', 'moderate', 'extensive', 'complete']:
+        raise KeyError("Unknown damage state: {0}".format(state))
+    
     if state == 'slight':
         if bld_type.startswith('MWS'):
             np.putmask(mu, vmask, 266.)

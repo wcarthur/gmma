@@ -42,13 +42,6 @@ def parseCostFile(cost_file):
         LOG.info('Last modified %s' % moddate)
 
     building_cost_data = dict()
-    try:
-        cost_file_handle = open(cost_file, 'rb')
-    except (IOError, WindowsError):
-        LOG.exception( "Failed to open cost file: %s" % cost_file)
-        raise IOError("Failed to open cost file: %s" % cost_file)
-    else:
-        cost_file_handle.close()
 
     with open(cost_file,'rb') as cost_file_handle:
         reader = csv.reader(cost_file_handle, quotechar='"')
@@ -97,6 +90,19 @@ def calculateValue(floor_area, landuse4, landuse5, building_type,
     For those records where there is no matching construction cost
     information (for the given land use classes), the value of that
     building type is set to zero.
+
+    :param floor_area: Floor area values for the given building type, across
+                       all polygons.
+    :type  floor_area: :class:`numpy.ndarray`
+    :param list landuse4: Level 4 land use class for the polygons.
+    :param list landuse5: Level 5 land use class for the polygons.
+    :param str building_type: Construction type, including the building height
+                              class.
+    :param dict building_costs: A dict that holds the building costs (per
+                                sq. m value) for the full range of building
+                                types and (valid) combinations of level 4 & 5
+                                land use class.
+                                
     """
 
     LOG.debug("Calculating value of building type {0}".format(building_type))
@@ -127,16 +133,14 @@ def calculateValue(floor_area, landuse4, landuse5, building_type,
 
         try:
             if building_costs[lu4][lu5].has_key(bldg_type):
-                # Pull the cost/sq. metre data from the building_costs
-                # dict:
+                # Pull the cost/sq. metre data from the building_costs dict:
                 value[i] = building_costs[lu4][lu5][bldg_type] * fla
             else:
                 value[i] = 0.0
         except KeyError:
             LOG.warn(("No building cost information for {0} buildings "
-                            "in {1}-{2} class land parcels"
-                            "(parcel ID# {3})").format(bldg_type,
-                            lu4, lu5, i) )
+                      "in {1}-{2} class land parcels "
+                      "(parcel ID# {3})").format(bldg_type, lu4, lu5, i))
             value[i] = 0.0
     return value
 
