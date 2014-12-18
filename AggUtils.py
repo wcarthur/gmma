@@ -25,6 +25,7 @@ from get_records import getField
 from probability import probability
 from AvDict import AvDict
 
+import pdb
 
 
 LOG = logging.getLogger(__name__)
@@ -117,6 +118,82 @@ def loadZonesFromRecords(records, fields, featureid, zoneid):
                                'subregion':subregion}
 
     return output
+
+
+def aggregate_events(records, fields, featureid, features):
+    """
+    'records' - all records contained in the shapefile
+    'fields' - list of fields held in the shape file
+    'zoneid' - name of the unique feature id field in the records
+    'features' is a dict keyed by all the available feature id numbers (which
+    should contain all those in 'featureid'). This is loaded from the complete
+    list of feature id numbers, using load_zones_from_records()
+
+    """
+    LOG.info("Calculating aggregated losses")
+    # Extract from teh shape file the required values
+    oid = getField(featureid, fields, records, dtype=int)
+    value = getField('bldg_value', fields, records)
+    flarea = getField('FLAREA_SUM', fields, records)
+    polygon_area = getField('AREA_SQM', fields, records)
+    aac = getField('cost', fields, records)
+    popn = getField('POP_EST', fields, records)
+    popa = getField('POP_AFFECT', fields, records, dtype=float)
+
+    # Aggregate the values to region and subregion:
+    r_value, sr_value = extractZoneValues(oid, features, value)
+    r_aac, sr_aac = extractZoneValues(oid, features, aac)
+    r_area, sr_area = extractZoneValues(oid, features, polygon_area)
+    r_flarea, sr_flarea = extractZoneValues(oid, features, flarea)
+    r_popn, sr_popn = extractZoneValues(oid, features, popn)
+    r_popa, sr_popa = extractZoneValues(oid, features, popa)
+
+    output = AvDict()
+    sroutput = AvDict()
+
+    for region in r_value.keys():
+        region_value = np.sum(r_value[region])
+        # Floor area of the region in hectares:
+        region_flarea = np.sum(r_flarea[region])/np.power(10., 4)
+        # Total area of the region in square kilometres:
+        region_area = np.sum(r_area[region])/np.power(10., 6)
+
+        # Total population in the region:
+        region_pop = np.sum(r_popn[region])
+
+        output[region]['VALUE'] = region_value
+        output[region]['flarea_sum'] = region_flarea
+        output[region]['area_sum'] = region_area
+        output[region]['POP_EST'] = region_pop
+
+        output[region]['cost'] = np.sum(r_aac[region])
+        output[region]['loss'] = output[region]['cost']/region_value
+        output[region]['dmg'] = output[region]['loss'] * \
+                                            region_flarea/region_area
+        output[region]['POP_AFFECT'] = np.nansum(r_popa[region])
+
+    for region in sr_value.keys():
+        sregion_value = np.sum(sr_value[region])
+        # Floor area of the region in hectares:
+        sregion_flarea = np.sum(sr_flarea[region])/np.power(10., 4)
+        # Total area of the region in square kilometres:
+        sregion_area = np.sum(sr_area[region])/np.power(10., 6)
+
+        # Total population in the region:
+        sregion_pop = np.sum(sr_popn[region])
+
+        sroutput[region]['VALUE'] = sregion_value
+        sroutput[region]['flarea_sum'] = sregion_flarea
+        sroutput[region]['area_sum'] = sregion_area
+        sroutput[region]['POP_EST'] = sregion_pop
+
+        sroutput[region]['cost'] = np.sum(sr_aac[region])
+        sroutput[region]['loss'] = sroutput[region]['cost']/sregion_value
+        sroutput[region]['dmg'] = sroutput[region]['loss'] * \
+                                            sregion_flarea/sregion_area
+        sroutput[region]['POP_AFFECT'] = np.nansum(sr_popa[region])
+
+    return output, sroutput
 
 def aggregate(records, fields, featureid, features, return_periods):
     """
@@ -279,6 +356,27 @@ def plotDmgOutput(zonename, dmg, probs, output_path):
     pyplot.ylabel("Annual probability")
     pyplot.title("Probability-damage curve for %s" % zonename)
     pyplot.savefig(filename)
+
+def writeEventOutput(output_file, data):
+    """
+    Write aggregated impact information for a single event to file
+    """
+    
+    output_fileh = open(output_file, 'w')
+    zones = data.keys()
+    header = "REGION,POP_EST,AREA_SQM,FLAREA_SUM,TOTAL_VALUE,LOSS,COST,DMGF,POP_AFFECT\n"
+    fmt = "%s, %f, %f, %f, %f, %f, %f, %f, %f\n"
+    output_fileh.write(header)
+    for zone in zones:
+        output_fileh.write(fmt % (zone, data[zone]['POP_EST'],
+                                        data[zone]['area_sum'],
+                                        data[zone]['flarea_sum'],
+                                        data[zone]['VALUE'],
+                                        data[zone]['loss'],
+                                        data[zone]['cost'],
+                                        data[zone]['dmg'],
+                                        data[zone]['POP_AFFECT']))
+    output_fileh.close()
 
 def writeLossOutput(output_file, data, return_periods, plot=True):
     """

@@ -54,7 +54,7 @@ def removeField(fieldname, fields, records):
     """
     Remove from the records the given field
     """
-    LOG.debug("Extracting {0} from records".format(fieldname))
+    LOG.debug("Removing {0} from records".format(fieldname))
     nrecords = len(records)
     fieldnames = [fields[i][0] for i in range(len(fields))]
 

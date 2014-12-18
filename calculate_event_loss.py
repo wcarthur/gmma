@@ -5,16 +5,13 @@
  Author: Craig Arthur, craig.arthur@ga.gov.au
  CreationDate: 2012-11-02
  Description: Process a shape file that holds proportional building type
- information and hazard information (return period wind speeds) for land
- parcels to calculate the loss for each return period, the annualised
- (integrated) loss and the total loss across the extent of the shape file.
+ information and hazard information (wind speeds) for land
+ parcels to calculate the loss for an event.
 
  Dependencies: shapefile.py (http://code.google.com/p/pyshp/)
                scipy
                numpy
                matplotlib
-
- Users need to set the return periods in the array at the bottom of this file.
 
  Input:
  This script reads a series of command line arguments to establish the
@@ -70,7 +67,7 @@
                            weighted by floor area.
 
 
- (C) Commonwealth of Australia (Geoscience Australia) 2012
+ (C) Commonwealth of Australia (Geoscience Australia) 2014
  This product is released under the Creative Commons Attribution 3.0
  Australia Licence
 
@@ -78,7 +75,7 @@
 
 """
 
-__version__ = "0.7"
+__version__ = "0.8"
 
 import os
 import sys
@@ -97,9 +94,9 @@ try:
     import matplotlib
     matplotlib.use('Agg', warn=False)
 
-    from get_records import getField
+    from get_records import getField, removeField
     from cost_data import parseCostFile, calculateValue
-    from parse_shapefile import writeShapefile, parseShapefile
+    from parse_shapefile import writeShapefile, parseShapefile, getProjection, writeProjectionFile
     from damage import damage, adjustDamageCurves, adjustFragilityCurves
     from AvDict import AvDict
 except ImportError as error:
@@ -277,7 +274,28 @@ def damageState(building_types, fields, records, dmgstate):
 
     return fields, records
 
-def calculatePopulation(fields, records, vulnerability_file):
+def dropDamageStateFields(building_types, fields, records):
+    """
+    Drop the damage state fields to produce a smaller shape file that 
+    contains only the population affected statistics
+
+    :param dict building_types: Dict of building type data, including the
+                                parameters for the fragility curves. 
+    :param list fields: List of field names from the input file.
+    :param list records: List of lists of records from the input file.
+    """
+    
+    dmgstates = ['sl', 'mod', 'ext', 'c']
+    for bld_type in building_types.keys():
+        records, fields = removeField(bld_type, fields, records)
+        for state in dmgstates:
+            fieldname = '_'.join([bld_type, state])
+            records, fields = removeField(fieldname, fields, records)
+    
+    return fields, records
+    
+
+def calculatePopulation(fields, records, building_types):
     """
     Calculate the population affected statistic for the event.
     "Population affected" is defined to be the population in building types
@@ -295,7 +313,6 @@ def calculatePopulation(fields, records, vulnerability_file):
     """
 
     LOG.info("Calculating affected population")
-    building_types = parseVulnerability(vulnerability_file)
     nrecords = len(records)
     n_bldg_type = len(building_types.keys())
     flarea = getField('FLAREA_SUM', fields, records)
@@ -327,17 +344,18 @@ def calculatePopulation(fields, records, vulnerability_file):
     for i, record in enumerate(records):
         record.extend([population_affected[i]])
 
+
     return fields, records
     
-def processDamage(fields, records, vulnerability_file, cost_file):
+def processDamage(fields, records, building_types, cost_file):
     """
     Process the data to calculate loss information:
     Input arguments:
         fields - list of fields contained in the input exposure shape file
         records - list of a list of records for each feature in the exposure
             shape file
-        vulnerability_file - filename of a csv-format file that holds the
-            parameters for the vulnerability curves for all building types
+        building_types - dict that holds the parameters for the
+            vulnerability curves for all building types
         cost_file - filename for a csv-format file that holds the construction
             cost information for the combination of land use categories and
             building types
@@ -350,7 +368,6 @@ def processDamage(fields, records, vulnerability_file, cost_file):
         are calculated.
     """
 
-    building_types = parseVulnerability(vulnerability_file)
     building_costs = parseCostFile(cost_file)
 
     output_fields, \
@@ -358,12 +375,12 @@ def processDamage(fields, records, vulnerability_file, cost_file):
                                      records, building_costs)
     return output_fields, output_records
 
-def processFragility(fields, records, vulnerability_file, state):
+def processFragility(fields, records, building_types, state):
     """
     Process the building data to determine damage states using
     fragility curves.
     """
-    building_types = parseVulnerability(vulnerability_file)
+
     output_fields, \
       output_records = damageState(building_types, fields, records, state)
 
@@ -513,33 +530,51 @@ def main():
     curdatestr = curdate.strftime('%Y%m%d%H%M')
     
     output_file = pjoin(abspath(output_path), 
-                        "event_loss_{0}".format(curdatestr))
+                        "event_loss" )#_{0}".format(curdatestr))
     
 
     # Load the exposure file
     shapes, fields, records = parseShapefile(shape_file)
+    # Get the projection
+    spatial_ref = getProjection(shape_file)
 
+    # Load the vulnerability file:
+    building_types = parseVulnerability(vulnerability_file)
+
+    # Process damage:
     output_fields, output_records = processDamage(fields, records,
-                                                  vulnerability_file,
+                                                  building_types,
                                                   cost_file)
 
     # Write out the data to another shapefile
     writeShapefile(output_file, output_fields, shapes, output_records)
+    writeProjectionFile(spatial_ref, output_file)
 
+    # Do the damage state calclations:
     for state in ['slight', 'moderate', 'extensive', 'complete']:
         output_fields, output_records = processFragility(fields, records,
-                                                         vulnerability_file,
+                                                         building_types,
                                                          state)
 
     output_fields, output_records = calculatePopulation(output_fields,
                                                         output_records,
-                                                        vulnerability_file)
+                                                        building_types)
     output_file = pjoin(abspath(output_path), 
-                        "event_damage_states_{0}".format(curdatestr))
+                        "event_damage_states")
     writeShapefile(output_file, output_fields, shapes, output_records)
+    writeProjectionFile(spatial_ref, output_file)
+
+    pop_fields, pop_records = dropDamageStateFields(building_types, 
+                                                    output_fields, 
+                                                    output_records)
+
+    output_file = pjoin(abspath(output_path), "event_pop_affect")
+    writeShapefile(output_file, pop_fields, shapes, pop_records)
+    writeProjectionFile(spatial_ref, output_file)
+
     # Calculate average loss across the entire region contained in the
     # input shapefile:
-    calculateAverageLoss(output_records, output_fields, output_path)
+    #calculateAverageLoss(output_records, output_fields, output_path)
 
 #*******************************************************************************
 # NOW START MAIN CODE

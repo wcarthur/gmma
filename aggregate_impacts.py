@@ -93,37 +93,25 @@ def showSyntax(exit_code=0):
 
     sys.exit(exit_code)
 
-def aggregateLoss(records, fields, features, return_periods, zoneid,
+def aggregateLoss(records, fields, features, zoneid,
                   output_path):
     """
     Aggregate loss for all return periods and annualised loss across
     some field (e.g. suburb boundaries)
     """
 
-    lguoutput, bgyoutput = AggUtils.aggregate(records, fields, zoneid,
-                                              features, return_periods)
+    lguoutput, bgyoutput = AggUtils.aggregate_events(records, fields, zoneid,
+                                              features)
 
-    lgu_loss_file = pjoin(abspath(output_path), 'lgu_loss.csv')
-    lgu_cost_file = pjoin(abspath(output_path), 'lgu_cost.csv')
-    lgu_dmg_file = pjoin(abspath(output_path), 'lgu_dmg.csv')
+    lgu_loss_file = pjoin(abspath(output_path), 'lgu_impact.csv')
+    bgy_loss_file = pjoin(abspath(output_path), 'bgy_impact.csv')
 
-    bgy_loss_file = pjoin(abspath(output_path), 'bgy_loss.csv')
-    bgy_cost_file = pjoin(abspath(output_path), 'bgy_cost.csv')
-    bgy_dmg_file = pjoin(abspath(output_path), 'bgy_dmg.csv')
-
-
-    AggUtils.writeLossOutput(lgu_loss_file, lguoutput, return_periods)
-    AggUtils.writeLossOutput(bgy_loss_file, bgyoutput, return_periods, False)
-
-    AggUtils.writeCostOutput(lgu_cost_file, lguoutput, return_periods)
-    AggUtils.writeCostOutput(bgy_cost_file, bgyoutput, return_periods, False)
-
-    AggUtils.writeDmgOutput(lgu_dmg_file, lguoutput, return_periods)
-    AggUtils.writeDmgOutput(bgy_dmg_file, bgyoutput, return_periods, False)
+    AggUtils.writeEventOutput(lgu_loss_file, lguoutput)
+    AggUtils.writeEventOutput(bgy_loss_file, bgyoutput)
 
     return
 
-def main(return_periods=None):
+def main():
     """
     Main section of the script - process command line args and call
     other functions to perform the aggregation
@@ -165,8 +153,7 @@ def main(return_periods=None):
     features = AggUtils.loadZonesFromRecords(records, fields, featureid,
                                              zonefield)
 
-    aggregateLoss(records, fields, features, return_periods, featureid,
-                   output_path)
+    aggregateLoss(records, fields, features, featureid, output_path)
 
 if __name__ == '__main__':
 
@@ -178,9 +165,4 @@ if __name__ == '__main__':
     LOG = flStartLog(log_file=flConfigFile('.log'), log_level='INFO',
                         verbose=True, datestamp=True)
 
-    # Set the return periods here:
-    return_periods = np.array([2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50,
-                              75, 100, 150, 200, 250, 300, 350, 400, 450,
-                              500, 1000, 2000, 2500, 5000, 10000])
-
-    main(return_periods)
+    main()
