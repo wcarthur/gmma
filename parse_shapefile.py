@@ -11,8 +11,15 @@ import shapefile
 import logging
 from files import flModDate
 
-import ogr
-import osr
+try:
+    import ogr
+except ImportError:
+    from osgeo import ogr
+
+try:
+    import osr
+except ImportError:
+    from osgeo import osr
 
 LOG = logging.getLogger(__name__)
 
