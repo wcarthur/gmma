@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
- Title: aggregate_loss.py
+ Title: aggregate_impacts.py
  Author: Craig Arthur, craig.arthur@ga.gov.au
  CreationDate: Wed May 01 16:17:09 2013
  Description: Aggregate the fields on the basis of a given aggregation field.
-
- Users need to set the return periods in the array at the bottom of this file.
 
  Input:
  This script reads a series of command line arguments to establish the
@@ -25,35 +23,25 @@
  Output:
  Data are aggregated by barangay (suburb) and municipality and values are
  written to CSV files for the damage, costs and damaged floor-area-equivalent.
- The script will also plot probability-loss curves for each municipality.
-
- To change the appearance of the plots, make changes to the plot_loss_output
- function in AggUtils.py
 
 
  Usage:
  1) Ensure the shapefile to be used has fields representing the damage, costs
-    and damaged floor-area-equivalent in each feature, for a number of return
-    periods.
- 2) Update the 'returnPeriods' variable at the bottom of this file to contain
-    the same values as you have damage fields in the shape file. e.g. if you
-    have fields named 'V5', 'V10', 'V20' and 'V25', then the 'returnPeriods'
-    variable should be [5,10,20,25].
- 3) Run the script:
+    and damaged floor-area-equivalent in each feature.
+
+ 2) Run the script:
     e.g. at a command prompt, enter the following:
-    C:\\Python26\\python aggregate_loss.py -f "OID1" -o ..\\Output
+    C:\\Python26\\python aggregate_impacts.py -f "OID1" -o ..\\Output
         -s ..\\Output\\annualised_loss.shp -z "AGGPOLY_ID"
 
  Version: 0.1 2013-05-24
+ Version: 0.2 2015-01-05
 
-
- (C) Commonwealth of Australia (Geoscience Australia) 2012
+ (C) Commonwealth of Australia (Geoscience Australia) 2015
  This product is released under the Creative Commons Attribution 3.0
  Australia Licence
 
  http://creativecommons.org/licenses/by/3.0/au/legalcode
-
- Id: $Id$
 
 """
 
@@ -82,7 +70,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 LOG = logging.getLogger()
 
 EPSILON = 1.0e-6
-__version__ = "0.1"
+__version__ = "0.2"
 
 def showSyntax(exit_code=0):
     """Display how to use this script and exit with the given exit
@@ -93,8 +81,7 @@ def showSyntax(exit_code=0):
 
     sys.exit(exit_code)
 
-def aggregateLoss(records, fields, features, zoneid,
-                  output_path):
+def aggregateLoss(records, fields, features, zoneid, output_path):
     """
     Aggregate loss for all return periods and annualised loss across
     some field (e.g. suburb boundaries)

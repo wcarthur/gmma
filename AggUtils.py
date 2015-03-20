@@ -14,7 +14,7 @@
 import os
 import csv
 import logging
-from os.path import join as pjoin
+from os.path import join as pjoin, abspath
 
 import numpy as np
 import matplotlib
@@ -24,9 +24,6 @@ from matplotlib import pyplot
 from get_records import getField
 from probability import probability
 from AvDict import AvDict
-
-import pdb
-
 
 LOG = logging.getLogger(__name__)
 
@@ -67,7 +64,7 @@ def getRegions(zonefile):
     zonefile
     """
     LOG.debug("Extracting list of unique regions from {0}".format(
-                        os.path.abspath(zonefile)) )
+                                              abspath(zonefile)))
 
     regions = ['UNDEFINED']
     subregions = ['UNDEFINED']
@@ -365,7 +362,7 @@ def writeEventOutput(output_file, data):
     output_fileh = open(output_file, 'w')
     zones = data.keys()
     header = "REGION,POP_EST,AREA_SQM,FLAREA_SUM,TOTAL_VALUE,LOSS,COST,DMGF,POP_AFFECT\n"
-    fmt = "%s, %f, %f, %f, %f, %f, %f, %f, %f\n"
+    fmt = "%s, %f, %f, %f, %f, %f, %f, %f, %d\n"
     output_fileh.write(header)
     for zone in zones:
         output_fileh.write(fmt % (zone, data[zone]['POP_EST'],
