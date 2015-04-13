@@ -72,29 +72,29 @@ def adjustDamageCurves(bld_type, vmask, mu, sigma, scale):
     LOG.debug( ("Adjusting curves for building types with "
                     "age-dependent vulnerability") )
     if bld_type.startswith('MWS'):
-        np.putmask(mu, vmask, 398.)
-        np.putmask(sigma, vmask, 0.16)
+        np.putmask(mu, vmask, 375.05)
+        np.putmask(sigma, vmask, 0.1934)
     elif bld_type.startswith('CHB'):
-        np.putmask(mu, vmask, 469.)
-        np.putmask(sigma, vmask, 0.44)
+        np.putmask(mu, vmask, 268.93)
+        np.putmask(sigma, vmask, 0.23528)
     elif bld_type.startswith('CWS'):
-        np.putmask(mu, vmask, 398.)
-        np.putmask(sigma, vmask, 0.16)
+        np.putmask(mu, vmask, 375.05)
+        np.putmask(sigma, vmask, 0.1934)
     elif bld_type.startswith('C1_L'):
-        np.putmask(mu, vmask, 477.)
-        np.putmask(sigma, vmask, 0.46)
+        np.putmask(mu, vmask, 309.58)
+        np.putmask(sigma, vmask, 0.28272)
     elif bld_type.startswith('C2_L'):
-        np.putmask(mu, vmask, 477.)
-        np.putmask(sigma, vmask, 0.46)
+        np.putmask(mu, vmask, 309.58)
+        np.putmask(sigma, vmask, 0.28272)
     elif bld_type.startswith('C4_L'):
-        np.putmask(mu, vmask, 477.)
-        np.putmask(sigma, vmask, 0.46)
+        np.putmask(mu, vmask, 309.58)
+        np.putmask(sigma, vmask, 0.28272)
     elif bld_type.startswith('PC1_L'):
-        np.putmask(mu, vmask, 477.)
-        np.putmask(sigma, vmask, 0.46)
+        np.putmask(mu, vmask, 309.58)
+        np.putmask(sigma, vmask, 0.28272)
     elif bld_type.startswith('PC2_L'):
-        np.putmask(mu, vmask, 477.)
-        np.putmask(sigma, vmask, 0.46)
+        np.putmask(mu, vmask, 309.58)
+        np.putmask(sigma, vmask, 0.28272)
 
     return mu, sigma, scale
 
